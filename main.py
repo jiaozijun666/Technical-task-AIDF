@@ -1,121 +1,202 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-main.py — Batch runner at project root.
-
-Runs multiple baselines by calling src.generate.run_eval(...) directly.
-
-Example (HF backend):
-  python main.py \
-    --data data/val_300.jsonl \
-    --out_dir results \
-    --model Qwen/Qwen2.5-1.5B-Instruct \
-    --backend hf \
-    --baselines perplexity p_true mars mars_se \
-    --with_context --temperature 0.5 --max_new_tokens 16 --limit 100
-
-Example (Ollama backend; only methods not needing token-level loss):
-  python main.py \
-    --data data/val_300.jsonl \
-    --out_dir results \
-    --model llama3.1:8b-instruct-q4_K_M \
-    --backend ollama \
-    --baselines p_true \
-    --with_context --limit 100
-"""
-
-from __future__ import annotations
 import argparse
+import json
 import os
+import shlex
+import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Any, Optional, Tuple
 
-# --- Make sure project root is on sys.path, so 'src' is importable ---
-ROOT = Path(__file__).resolve().parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from src.generate import run_eval  # noqa: E402  (import after path fix)
-
-SUPPORTED = {"perplexity", "p_true", "mars", "mars_se"}
+# Baselines that do not require external APIs
+SUPPORTED_BASELINES = ["perplexity", "p_true", "mars", "mars_se"]
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Run multiple baselines and aggregate AUROC.")
-    p.add_argument("--data", required=True, help="Input JSONL with keys: question, context?, gold?")
-    p.add_argument("--out_dir", required=True, help="Directory to store outputs.")
-    p.add_argument("--model", required=True, help="HF model id or Ollama model tag.")
-    p.add_argument("--backend", choices=["hf", "ollama"], default="hf", help="Generation backend.")
-    # Accept both space-separated and comma-separated baseline lists
-    p.add_argument("--baselines", nargs="+", required=True,
-                   help="Baselines to run (space-separated). Supported: perplexity p_true mars mars_se")
-    p.add_argument("--with_context", action="store_true", help="Include 'context' in the prompt if present.")
-    p.add_argument("--temperature", type=float, default=0.5)
-    p.add_argument("--max_new_tokens", type=int, default=16)
-    p.add_argument("--limit", type=int, default=None)
-    p.add_argument("--api_base", default="http://127.0.0.1:11434",
-                   help="Ollama base URL (when backend=ollama).")
-    return p.parse_args()
+    ap = argparse.ArgumentParser(
+        description="Run multiple baselines via src.generate and collect metrics."
+    )
+    ap.add_argument(
+        "--baselines",
+        default="all",
+        help="Comma list or 'all'. Supported: perplexity,p_true,mars,mars_se",
+    )
+    ap.add_argument(
+        "--data",
+        default="data/val_300.jsonl",
+        help="Input JSONL with fields: question, context (optional), gold",
+    )
+    ap.add_argument(
+        "--out_dir",
+        default="results",
+        help="Directory to write outputs",
+    )
+    ap.add_argument(
+        "--backend",
+        default="hf",
+        choices=["hf", "ollama"],
+        help="Backend used by src.generate",
+    )
+    ap.add_argument(
+        "--model",
+        required=True,
+        help="Model id (HF repo id or ollama tag)",
+    )
+    ap.add_argument(
+        "--api_base",
+        default=None,
+        help="Ollama API base, e.g. http://127.0.0.1:11434 (ignored for hf)",
+    )
+    ap.add_argument(
+        "--with_context",
+        action="store_true",
+        help="Pass --with_context through to src.generate",
+    )
+    ap.add_argument(
+        "--limit",
+        type=int,
+        default=100,
+        help="Evaluate only the first N samples (0 = all)",
+    )
+    ap.add_argument(
+        "--max_new_tokens",
+        type=int,
+        default=16,
+        help="Max new tokens for generation",
+    )
+    ap.add_argument(
+        "--temperature",
+        type=float,
+        default=0.5,
+        help="Sampling temperature",
+    )
+    ap.add_argument(
+        "--python",
+        default=sys.executable,
+        help="Python executable to invoke",
+    )
+    ap.add_argument(
+        "--dry_run",
+        action="store_true",
+        help="Print commands without running",
+    )
+    return ap.parse_args()
+
+def ensure_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+def pick_baselines(spec: str) -> List[str]:
+    if spec.strip().lower() == "all":
+        return SUPPORTED_BASELINES
+    items = [b.strip() for b in spec.split(",") if b.strip()]
+    unknown = set(items) - set(SUPPORTED_BASELINES)
+    if unknown:
+        raise ValueError(
+            f"Unknown baselines: {sorted(unknown)}. "
+            f"Supported: {SUPPORTED_BASELINES} or 'all'."
+        )
+    return items
+
+def build_cmd(
+    python_exe: str,
+    baseline: str,
+    args: argparse.Namespace,
+    out_path: Path,
+) -> List[str]:
+    cmd = [
+        python_exe, "-m", "src.generate",
+        "--baseline", baseline,
+        "--backend", args.backend,
+        "--model", args.model,
+        "--data", args.data,
+        "--out", str(out_path),
+        "--max_new_tokens", str(args.max_new_tokens),
+        "--limit", str(args.limit),
+        "--temperature", str(args.temperature),
+    ]
+    if args.with_context:
+        cmd.append("--with_context")
+    if args.backend == "ollama" and args.api_base:
+        cmd.extend(["--api_base", args.api_base])
+    return cmd
+
+def parse_auroc(text: str) -> Optional[float]:
+    """
+    Try to find a line containing 'AUROC' and parse the last token as float.
+    Works with logs printed by src.generate.
+    """
+    for line in text.splitlines():
+        if "AUROC" in line:
+            tokens = line.strip().split()
+            try:
+                return float(tokens[-1])
+            except Exception:
+                continue
+    return None
+
+def run_one(
+    baseline: str,
+    args: argparse.Namespace,
+    out_dir: Path
+) -> Tuple[str, Optional[float], Optional[str], Optional[str]]:
+    """
+    Run a single baseline via subprocess. Returns:
+    (baseline, auroc, out_file, error_msg)
+    """
+    out_file = out_dir / f"val_{baseline}.jsonl"
+    cmd = build_cmd(args.python, baseline, args, out_file)
+
+    print(f"\n=== [{baseline}] ===")
+    print("CMD:", shlex.join(cmd))
+    if args.dry_run:
+        return baseline, None, str(out_file), None
+
+    env = os.environ.copy()
+    # Ensure this repo is importable by src.generate
+    env["PYTHONPATH"] = f".{os.pathsep}{env.get('PYTHONPATH', '')}"
+
+    proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    stdout = proc.stdout or ""
+    stderr = proc.stderr or ""
+    combined = stdout + "\n" + stderr
+
+    if proc.returncode != 0:
+        print(combined)
+        return baseline, None, None, f"returncode={proc.returncode}"
+
+    auroc = parse_auroc(combined)
+    if auroc is None:
+        print(combined)
+        print("[WARN] AUROC not found in logs.")
+
+    return baseline, auroc, str(out_file), None
 
 def main() -> None:
     args = parse_args()
-
-    # Normalize baseline list (flatten possible comma-separated tokens)
-    requested: List[str] = []
-    for token in args.baselines:
-        requested.extend([t.strip() for t in token.split(",") if t.strip()])
-    requested = [b.lower() for b in requested]
-
-    # Validate
-    unknown = [b for b in requested if b not in SUPPORTED]
-    if unknown:
-        raise ValueError(f"Unknown baseline(s): {unknown}. Supported: {sorted(SUPPORTED)}")
-
-    # Filter HF-only methods when backend is Ollama
-    if args.backend == "ollama":
-        hf_only = {"perplexity", "mars", "mars_se"}
-        requested = [b for b in requested if b not in hf_only]
-        if not requested:
-            print("[main] No baselines left to run on Ollama "
-                  "(perplexity/mars/mars_se require token-level scores via HF).")
-            return
-
+    baselines = pick_baselines(args.baselines)
     out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    stem = Path(args.data).stem  # e.g., val_300
+    ensure_dir(out_dir)
 
-    print(f"[main] data={args.data}")
-    print(f"[main] out_dir={out_dir}")
-    print(f"[main] backend/model={args.backend}/{args.model}")
-    print(f"[main] baselines={requested}")
+    summary: List[Dict[str, Any]] = []
+    for b in baselines:
+        base, auroc, out_file, err = run_one(b, args, out_dir)
+        summary.append(
+            {"baseline": base, "auroc": auroc, "out": out_file, "error": err}
+        )
 
-    summary: Dict[str, float] = {}
-    for b in requested:
-        out_path = out_dir / f"{stem}_{b}.jsonl"
-        print(f"\n=== Running: {b} -> {out_path} ===")
-        try:
-            auroc = run_eval(
-                baseline=b,
-                data=args.data,
-                out=str(out_path),
-                model=args.model,
-                backend=args.backend,
-                temperature=args.temperature,
-                max_new_tokens=args.max_new_tokens,
-                with_context=args.with_context,
-                limit=args.limit,
-                api_base=args.api_base,
-            )
-            summary[b] = auroc
-        except Exception as e:
-            print(f"[main] baseline '{b}' failed: {e}")
-            summary[b] = float("nan")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    summary_path = out_dir / f"summary_{ts}.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
 
-    print("\n===== SUMMARY (AUROC) =====")
-    for b in requested:
-        a = summary.get(b, float("nan"))
-        print(f"{b:12s} : {a:.4f}" if a == a else f"{b:12s} : NaN")
-    print("===========================\n")
+    print("\n=== Summary ===")
+    for row in summary:
+        print(
+            f"{row['baseline']:>10}  "
+            f"AUROC={row['auroc']}  "
+            f"out={row['out']}  "
+            f"error={row['error']}"
+        )
+    print(f"\nSaved: {summary_path}")
 
 if __name__ == "__main__":
     main()
