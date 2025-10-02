@@ -1,236 +1,391 @@
 # -*- coding: utf-8 -*-
 """
-generate.py
+Unified evaluator for baseline methods.
 
-Minimal baseline runner with a 'perplexity' method, supporting two backends:
-- hf      : Hugging Face transformers (can compute token-level loss/perplexity)
-- ollama  : OpenAI-compatible API served by Ollama (generation only; no loss)
+- Public API: run_eval(...)
+- Tries to call a baseline implementation from your `baseline/...` package first.
+  The function signature we expect in those modules is:
+      run(samples, tokenizer, model, build_prompt, cfg, limit) -> (auroc, outputs)
+  where:
+      samples: List[Dict] with keys {"question", "context", "gold"}
+      tokenizer, model: HF objects (or None if not needed)
+      build_prompt: callable(question:str, context:str|None, use_context:bool) -> str
+      cfg: dict-like with fields {temperature, max_new_tokens, with_context, backend, api_base}
+      limit: optional int to truncate the evaluation set
+- If the target baseline cannot be imported, we fall back to a built-in
+  "perplexity" implementation that works with the HF backend (and supports Ollama
+  *generation only*, i.e., without NLL/perplexity scoring).
 
-Pipeline (perplexity baseline):
-  1) Build a prompt (with/without context) asking for a short phrase ONLY
-  2) Generate one answer from a HF/OLLAMA model
-  3) For HF backend only: compute NLL of the generated answer tokens
-  4) Label = 1 if EM==0 (hallucination), else 0
-  5) Report AUROC when scores are available (HF path)
+This file keeps *no* dataset- or paper-specific code. It just builds prompts,
+runs generation/scoring, and writes JSONL.
 
-Input JSONL schema per line:
-  {"question": str, "context": str, "gold": str}
-
-Outputs JSONL:
-  {"question": ..., "gold": ..., "pred": ..., "em": 0/1, "loss": float | null}
+Author: you :)
 """
+from __future__ import annotations
 
-import os
-import json
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Any
 import argparse
-from typing import Optional, Dict, List
+import json
+import math
+import os
+import sys
+import time
 
-# ---------- Text utils ----------
+# ---------- Optional imports (torch / transformers only when needed) ----------
+try:
+    import torch
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+except Exception:
+    torch = None
+    AutoTokenizer = None
+    AutoModelForCausalLM = None
 
-def normalize_text(s: str) -> str:
-    """Very simple normalization for EM."""
-    return " ".join(s.strip().lower().split())
-
-def exact_match(pred: str, gold: str) -> int:
-    return int(normalize_text(pred) == normalize_text(gold))
-
-def build_prompt(question: str, context: Optional[str] = None, use_context: bool = False) -> str:
-    """
-    Build a short-answer prompt. Keeping answers short improves EM hit-rate on small models.
-    """
-    if use_context and context:
-        return (
-            "Use the CONTEXT to answer with a short phrase ONLY.\n"
-            "Do not explain. Output just the answer.\n\n"
-            f"CONTEXT:\n{context}\n\n"
-            f"Question: {question}\n"
-            "Answer:"
-        )
-    else:
+# ---------- Prompt builder (prefer your existing src/prompt.py) ---------------
+try:
+    from src.prompt import build_prompt  # your own prompt builder if present
+except Exception:
+    def build_prompt(question: str, context: Optional[str], use_context: bool) -> str:
+        """Tiny fallback prompt builder."""
+        if use_context and context:
+            return (
+                "Use the CONTEXT to answer with a short phrase ONLY.\n"
+                "Do not explain. Output just the answer.\n\n"
+                f"CONTEXT: {context}\n\n"
+                f"Question: {question}\nAnswer:"
+            )
         return (
             "Answer the question with a short phrase ONLY.\n"
             "Do not explain. Output just the answer.\n\n"
-            f"Question: {question}\n"
-            "Answer:"
+            f"Question: {question}\nAnswer:"
         )
 
-# ---------- HF backend (transformers) ----------
+# ---------- Small I/O helpers -------------------------------------------------
+def load_jsonl(path: str) -> List[Dict[str, Any]]:
+    items: List[Dict[str, Any]] = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            items.append(json.loads(line))
+    return items
 
-def load_hf_model(model_name: str):
-    import torch
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+def save_jsonl(path: str, rows: List[Dict[str, Any]]) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for x in rows:
+            f.write(json.dumps(x, ensure_ascii=False) + "\n")
 
-    device = "cpu"
-    if torch.backends.mps.is_available():
-        device = "mps"
-    elif torch.cuda.is_available():
-        device = "cuda"
+# ---------- Simple normalization / metrics -----------------------------------
+def _normalize_text(s: str) -> str:
+    import re, string
+    s = s.strip().lower()
+    s = s.translate(str.maketrans("", "", string.punctuation))
+    s = re.sub(r"\s+", " ", s)
+    return s
 
-    tok = AutoTokenizer.from_pretrained(model_name, use_fast=True)
-    mdl = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype="auto",
-        device_map="auto" if device == "cuda" else None,
-    )
-    if device in ("mps", "cpu"):
-        mdl.to(device)
+def exact_match(pred: str, gold: str) -> int:
+    """Return 1 if exactly equal after normalization, else 0."""
+    return int(_normalize_text(pred) == _normalize_text(gold))
 
+def auroc_from_pairs(y_true: List[int], scores: List[float]) -> float:
+    """
+    Minimal AUROC implementation (no sklearn dependency).
+    Positive class is y=1 (hallucination). Larger score = more likely positive.
+    """
+    # Sort by score descending
+    pairs = sorted(zip(scores, y_true), key=lambda t: t[0], reverse=True)
+    P = sum(y_true)
+    N = len(y_true) - P
+    if P == 0 or N == 0:
+        return float("nan")
+    tp = fp = 0
+    prev_score = None
+    auc = 0.0
+    prev_tp = prev_fp = 0
+
+    for score, y in pairs:
+        if prev_score is None or score != prev_score:
+            # trapezoid area between (prev_fp/N, prev_tp/P) and (fp/N, tp/P)
+            auc += (fp - prev_fp) / N * (tp + prev_tp) / (2 * P)
+            prev_score, prev_tp, prev_fp = score, tp, fp
+        if y == 1:
+            tp += 1
+        else:
+            fp += 1
+    # last trapezoid
+    auc += (fp - prev_fp) / N * (tp + prev_tp) / (2 * P)
+    return float(auc)
+
+# ---------- Backend: Ollama (HTTP) -------------------------------------------
+def _ollama_generate(api_base: str, model: str, prompt: str, temperature: float, max_new_tokens: int) -> str:
+    """
+    Call Ollama's /api/generate endpoint. No loss/perplexity available here.
+    """
+    import requests  # lightweight dependency
+    url = f"{api_base.rstrip('/')}/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "options": {
+            "temperature": float(temperature),
+            "num_predict": int(max_new_tokens),
+        },
+        "stream": False,
+    }
+    r = requests.post(url, json=payload, timeout=300)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("response", "").strip()
+
+# ---------- Backend: HF (Transformers) ---------------------------------------
+def _get_device() -> str:
+    if torch is None:
+        return "cpu"
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():  # Apple Silicon
+        return "mps"
+    return "cpu"
+
+def _hf_load(model_name: str):
+    if AutoTokenizer is None or AutoModelForCausalLM is None:
+        raise RuntimeError("transformers/torch not available. Please install requirements.")
+    tok = AutoTokenizer.from_pretrained(model_name)
+    mdl = AutoModelForCausalLM.from_pretrained(model_name)
+    device = _get_device()
+    mdl.to(device)
+    mdl.eval()
     return tok, mdl, device
 
-def generate_answer_hf(tokenizer, model, device: str, prompt: str, max_new_tokens: int, temperature: float) -> str:
-    import torch
+@torch.inference_mode()
+def _hf_generate_only(tokenizer, model, device: str, prompt: str, temperature: float, max_new_tokens: int) -> str:
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    with torch.no_grad():
-        out_ids = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=(temperature > 0),
-            temperature=max(1e-6, temperature),
-            pad_token_id=tokenizer.eos_token_id,
-        )[0]
-    gen = tokenizer.decode(out_ids[inputs["input_ids"].shape[1]:], skip_special_tokens=True)
-    return gen.strip()
-
-def nll_of_text_hf(tokenizer, model, device: str, text: str) -> float:
-    """
-    Teacher-forced negative log-likelihood of `text` (HF only).
-    This is a crude approximation for a short phrase.
-    """
-    import torch
-    if not text:
-        return 0.0
-    ids = tokenizer(text, return_tensors="pt").to(device)
-    with torch.no_grad():
-        out = model(**ids, labels=ids["input_ids"])
-        # HF returns mean loss over tokens
-        loss = float(out.loss.detach().cpu().item())
-    return loss
-
-# ---------- Ollama backend (OpenAI-compatible) ----------
-
-def generate_answer_ollama(prompt: str, model: str, api_base: str, max_new_tokens: int, temperature: float) -> str:
-    """
-    Call Ollama's OpenAI-compatible /chat/completions endpoint.
-    Note: no token-level loss is available from this API.
-    """
-    from openai import OpenAI
-    client = OpenAI(base_url=api_base, api_key="ollama")  # any string works
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
+    out = model.generate(
+        **inputs,
+        do_sample=True,
         temperature=float(temperature),
-        max_tokens=int(max_new_tokens),
+        max_new_tokens=int(max_new_tokens),
+        pad_token_id=tokenizer.eos_token_id,
     )
-    return resp.choices[0].message.content.strip()
+    text = tokenizer.decode(out[0], skip_special_tokens=True)
+    # return only the continuation portion
+    full = text
+    # naive way to cut the prompt: if tokenizer is not reversible, we still return tail
+    if full.startswith(prompt):
+        return full[len(prompt):].strip()
+    return full.strip()
 
-# ---------- Runner ----------
+@torch.inference_mode()
+def _hf_per_token_nll(tokenizer, model, device: str, prompt: str, answer: str) -> float:
+    """
+    Compute mean negative log-likelihood on the *answer tokens* given the prompt.
+    """
+    full = prompt + (" " if (prompt and not prompt.endswith(" ")) else "") + answer
+    enc = tokenizer(full, return_tensors="pt")
+    enc_prompt = tokenizer(prompt, return_tensors="pt")
 
-def run_perplexity(args: argparse.Namespace) -> None:
-    # Load model according to backend
-    if args.backend == "hf":
-        tokenizer, model, device = load_hf_model(args.model)
-        print(f"[generate/perplexity] backend=hf device={device}")
-    else:
-        tokenizer = model = device = None
-        print(f"[generate/perplexity] backend=ollama api_base={args.api_base}")
+    input_ids = enc["input_ids"].to(device)
+    labels = input_ids.clone()
 
-    # IO
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    fin = open(args.data, "r", encoding="utf-8")
-    fout = open(args.out, "w", encoding="utf-8")
+    # mask prompt tokens to -100 so they don't contribute to the loss
+    prompt_len = enc_prompt["input_ids"].shape[-1]
+    labels[:, :prompt_len] = -100
 
-    import math
-    from tqdm import tqdm
+    out = model(input_ids=input_ids, labels=labels)
+    loss = out.loss  # mean over non-masked
+    return float(loss.detach().cpu().item())
 
-    y_true: List[int] = []   # 1 if hallucination, else 0
-    scores: List[float] = [] # perplexity proxy (higher means more hallu); HF only
+# ---------- Built-in baseline: perplexity ------------------------------------
+def _builtin_perplexity(samples: List[Dict[str, Any]],
+                        tokenizer,
+                        model,
+                        build_prompt_fn,
+                        cfg: Dict[str, Any],
+                        limit: Optional[int]) -> Tuple[float, List[Dict[str, Any]]]:
+    """
+    Fallback perplexity baseline:
+    - HF backend: generate + compute NLL on generated answer tokens
+    - Ollama backend: generate only (scores unavailable -> AUROC likely NaN)
+    """
+    backend = cfg.get("backend", "hf")
+    with_context = bool(cfg.get("with_context", False))
+    temperature = float(cfg.get("temperature", 0.5))
+    max_new_tokens = int(cfg.get("max_new_tokens", 16))
+    api_base = cfg.get("api_base", "http://127.0.0.1:11434")
 
-    cnt = 0
-    for line in tqdm(fin, desc="perplexity"):
-        if args.limit is not None and cnt >= args.limit:
-            break
-        cnt += 1
+    rows: List[Dict[str, Any]] = []
+    n = len(samples) if limit is None else min(len(samples), int(limit))
 
-        ex = json.loads(line)
-        q = ex.get("question", "")
-        ctx = ex.get("context", "")
-        gold = ex.get("gold", "")
+    y_true: List[int] = []
+    scores: List[float] = []
 
-        prompt = build_prompt(q, ctx, use_context=args.with_context)
+    for i in range(n):
+        ex = samples[i]
+        q = ex["question"]
+        ctx = ex.get("context")
+        gold = ex["gold"]
 
-        # Generate
-        if args.backend == "hf":
-            pred = generate_answer_hf(tokenizer, model, device, prompt, args.max_new_tokens, args.temperature)
+        prompt = build_prompt_fn(q, ctx, with_context)
+
+        if backend == "hf":
+            assert tokenizer is not None and model is not None, "HF backend requires tokenizer/model."
+            device = _get_device()
+            pred = _hf_generate_only(tokenizer, model, device, prompt, temperature, max_new_tokens)
+            try:
+                nll = _hf_per_token_nll(tokenizer, model, device, prompt, pred)
+            except Exception:
+                nll = None
+        elif backend == "ollama":
+            pred = _ollama_generate(api_base, cfg["model"], prompt, temperature, max_new_tokens)
+            nll = None
         else:
-            pred = generate_answer_ollama(prompt, args.model, args.api_base, args.max_new_tokens, args.temperature)
+            raise ValueError(f"Unknown backend: {backend}")
 
+        # EM / hallucination label: 1 means hallucination (EM == 0)
         em = exact_match(pred, gold)
+        label = 1 - em  # hallucination as positive class
 
-        # Score
-        if args.backend == "hf":
-            # Use NLL of the generated answer as a monotonic proxy of perplexity.
-            loss = nll_of_text_hf(tokenizer, model, device, pred)
-            scores.append(loss)       # higher loss => more hallucination
-        else:
-            loss = None               # Not available on Ollama
+        row = {
+            "question": q,
+            "context": ctx,
+            "gold": gold,
+            "pred": pred,
+            "em": em,
+            "loss": nll,
+        }
+        rows.append(row)
 
-        y_true.append(1 - em)         # hallucination = 1 if EM==0
+        if nll is not None and not math.isnan(nll) and math.isfinite(nll):
+            y_true.append(label)
+            scores.append(float(nll))
 
-        rec = {"question": q, "gold": gold, "pred": pred, "em": em, "loss": loss}
-        fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    # AUROC on available scores
+    auroc = float("nan")
+    if len(scores) >= 2 and len(set(y_true)) > 1:
+        auroc = auroc_from_pairs(y_true, scores)
 
-    fin.close()
-    fout.close()
+    return auroc, rows
 
-    # AUROC
-    if args.backend == "hf" and len(set(y_true)) > 1 and len(scores) == len(y_true):
-        # Simple AUROC via sklearn if available; else, compute by ranking
+# ---------- Registry: try to import your baseline implementations -------------
+def _import_baseline_runner(name: str):
+    """
+    Try multiple canonical locations for a baseline runner.
+    Expected callable signature:
+        run(samples, tokenizer, model, build_prompt, cfg, limit) -> (auroc, outputs)
+    """
+    candidates = [
+        f"baseline.uncertainty_based.{name}",
+        f"baseline.internal_representation_based.{name}",
+        f"baseline.{name}",
+    ]
+    for mod in candidates:
         try:
-            from sklearn.metrics import roc_auc_score
-            auroc = float(roc_auc_score(y_true, scores))
+            m = __import__(mod, fromlist=["run"])
+            if hasattr(m, "run") and callable(m.run):
+                return m.run
         except Exception:
-            # Fallback: compute pairwise concordance (Mann–Whitney U)
-            import numpy as np
-            y = np.array(y_true)
-            s = np.array(scores)
-            pos = s[y == 1]
-            neg = s[y == 0]
-            if len(pos) == 0 or len(neg) == 0:
-                auroc = float("nan")
-            else:
-                # probability that a random positive has higher score than a random negative
-                auroc = float((pos[:, None] > neg[None, :]).mean())
-        print(f"[generate/perplexity] AUROC = {auroc:.4f}")
+            continue
+    return None
+
+# ---------- Public API --------------------------------------------------------
+@dataclass
+class EvalConfig:
+    baseline: str
+    data: str
+    out: str
+    model: str
+    backend: str = "hf"                  # "hf" or "ollama"
+    temperature: float = 0.5
+    max_new_tokens: int = 16
+    with_context: bool = False
+    limit: Optional[int] = None
+    api_base: str = "http://127.0.0.1:11434"  # for Ollama
+
+def run_eval(*,
+             baseline: str,
+             data: str,
+             out: str,
+             model: str,
+             backend: str = "hf",
+             temperature: float = 0.5,
+             max_new_tokens: int = 16,
+             with_context: bool = False,
+             limit: Optional[int] = None,
+             api_base: str = "http://127.0.0.1:11434") -> float:
+    """
+    Load data, run the specified baseline, save outputs, and return AUROC (float|NaN).
+    """
+    # 1) load
+    samples = load_jsonl(data)
+
+    # 2) load model if needed (HF backend); we pass tokenizer/model even if the
+    #    imported runner does not need them.
+    tokenizer = model_obj = device = None
+    if backend == "hf":
+        tokenizer, model_obj, device = _hf_load(model)
+
+    # 3) baseline dispatch
+    cfg = {
+        "backend": backend,
+        "model": model,
+        "temperature": temperature,
+        "max_new_tokens": max_new_tokens,
+        "with_context": with_context,
+        "api_base": api_base,
+    }
+
+    runner = _import_baseline_runner(baseline)
+    if runner is None:
+        if baseline.lower() != "perplexity":
+            raise RuntimeError(
+                f"Baseline '{baseline}' not found in your 'baseline/' package "
+                f"and no built-in implementation is available."
+            )
+        # fallback
+        auroc, rows = _builtin_perplexity(samples, tokenizer, model_obj, build_prompt, cfg, limit)
     else:
-        print("[generate/perplexity] AUROC not computed (backend has no scores or single class).")
+        auroc, rows = runner(samples, tokenizer, model_obj, build_prompt, cfg, limit)
 
-# ---------- CLI ----------
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--baseline", type=str, required=True, choices=["perplexity"], help="baseline to run")
-    ap.add_argument("--data", type=str, required=True, help="path to input JSONL")
-    ap.add_argument("--out", type=str, required=True, help="path to output JSONL")
-    ap.add_argument("--model", type=str, required=True, help="model name (HF repo or Ollama tag)")
-    ap.add_argument("--temperature", type=float, default=0.5)
-    ap.add_argument("--max_new_tokens", type=int, default=16)
-    ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--with_context", action="store_true", help="include context in the prompt")
-
-    # NEW: backend selection
-    ap.add_argument("--backend", type=str, default="hf", choices=["hf", "ollama"],
-                    help="hf=transformers; ollama=OpenAI-compatible API")
-    ap.add_argument("--api_base", type=str, default="http://localhost:11434/v1",
-                    help="Ollama OpenAI-compatible base url")
-
-    args = ap.parse_args()
-
-    if args.baseline == "perplexity":
-        if args.backend == "ollama":
-            print("[warn] 'perplexity' scores are unavailable on ollama backend; running generation+EM only.")
-        run_perplexity(args)
+    # 4) save & report
+    save_jsonl(out, rows)
+    print(f"[generate/{baseline}] saved {len(rows)} rows to {out}")
+    if auroc == auroc:  # not NaN
+        print(f"[generate/{baseline}] AUROC = {auroc:.4f}")
     else:
-        raise ValueError(f"Unknown baseline: {args.baseline}")
+        print(f"[generate/{baseline}] AUROC not computed (single class or invalid scores).")
+    return float(auroc)
+
+# ---------- Minimal CLI (optional) -------------------------------------------
+def _build_argparser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser()
+    p.add_argument("--baseline", required=True, help="e.g., perplexity / p_true / mars / mars_se / semantic_entropy ...")
+    p.add_argument("--data", required=True, help="Input JSONL file")
+    p.add_argument("--out", required=True, help="Output JSONL file")
+    p.add_argument("--model", required=True, help="HF model id or Ollama model name")
+    p.add_argument("--backend", default="hf", choices=["hf", "ollama"])
+    p.add_argument("--temperature", type=float, default=0.5)
+    p.add_argument("--max_new_tokens", type=int, default=16)
+    p.add_argument("--with_context", action="store_true")
+    p.add_argument("--limit", type=int, default=None)
+    p.add_argument("--api_base", default="http://127.0.0.1:11434", help="Ollama base URL")
+    return p
+
+def main() -> None:
+    args = _build_argparser().parse_args()
+    run_eval(
+        baseline=args.baseline,
+        data=args.data,
+        out=args.out,
+        model=args.model,
+        backend=args.backend,
+        temperature=args.temperature,
+        max_new_tokens=args.max_new_tokens,
+        with_context=args.with_context,
+        limit=args.limit,
+        api_base=args.api_base,
+    )
 
 if __name__ == "__main__":
     main()
