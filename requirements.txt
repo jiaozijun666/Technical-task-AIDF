@@ -1,6 +1,8 @@
-torch==2.6.0
 transformers==4.51.3
+tokenizers==0.21.4
 datasets
-scikit-learn
 accelerate
-tqdm
+sentencepiece
+protobuf==5.29.1
+scikit-learn
+
