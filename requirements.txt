@@ -13,8 +13,7 @@ pandas==2.2.2
 tqdm==4.66.4
 huggingface-hub>=0.30.0,<1.0
 
-# ===== Compatibility pins =====
-# protobuf 5.x 与 transformers 4.51.3 更稳（可避免你在 Colab 看到的冲突）
+
 protobuf==5.29.1
 typing-extensions>=4.8.0
 requests==2.32.3
