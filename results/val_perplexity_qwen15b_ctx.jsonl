@@ -1,0 +1,300 @@
+{"question": "Since when was the Rhine part of the areal of Hallstatt culture?", "gold": "6th century BC", "pred": "Sixth century BC\n\nThis context provides information about the history of the Rhine River", "em": 0, "loss": 3.5291237831115723}
+{"question": "What was Apples market share of all computer shipments in 2011?", "gold": "9.3%", "pred": "9.3%", "em": 1, "loss": 3.8580093383789062}
+{"question": "What team was awarded by Franco for having a good relationship?", "gold": "blaugrana", "pred": "Barcelona Football Club (Barça).", "em": 0, "loss": 3.3220255374908447}
+{"question": "What did some US Politicians think Coalition forces should have been allowed to have done?", "gold": "pressed on to Baghdad and removed Hussein from power", "pred": "Remove Hussein from power.", "em": 0, "loss": 8.553831100463867}
+{"question": "What ISO equivalent speeds can digital cameras obtain?", "gold": "409,600", "pred": "Up to 409,600.", "em": 0, "loss": 2.151684045791626}
+{"question": "What type of vacant buildings have been spared destruction?", "gold": "historically significant", "pred": "Historically significant ones.", "em": 0, "loss": 5.265338897705078}
+{"question": "What was the original goal of the Swiss military strategy?", "gold": "protect the economic heartland", "pred": "Static defence at the borders to protect the economic heartland.", "em": 0, "loss": 5.029623985290527}
+{"question": "Which of Hayek's works did Friedman once teach?", "gold": "The Use of Knowledge in Society", "pred": "\"The Use of Knowledge in Society\"", "em": 0, "loss": 4.135646343231201}
+{"question": "Which ocean name is translated to mean \"all the sea?\"", "gold": "Panthalassa", "pred": "Panthalassa\n\nThis context discusses various aspects related to the Triassic period,", "em": 0, "loss": 4.275458335876465}
+{"question": "What chemical was discovered to have caused the hole in the ozone?", "gold": "chlorofluorocarbons", "pred": "Chlorofluorocarbons (CFCs).", "em": 0, "loss": 1.8889402151107788}
+{"question": "In 2010, how many applicants from Eton were accepted to Oxford?", "gold": "37", "pred": "37 applicants\n\nThe answer is 37 applicants.", "em": 0, "loss": 3.0391271114349365}
+{"question": "How of Charleston's total area is dry land?", "gold": "109.0 square miles (282.2 km2)", "pred": "109.0 square miles (282.2 km2", "em": 0, "loss": 2.69941782951355}
+{"question": "Which successor to Henry resumed persecution of the Huguenots?", "gold": "Louis XIII", "pred": "Louis XIII\n\nThe answer is \"Louis XIII\".", "em": 0, "loss": 3.711552143096924}
+{"question": "Who enforces canon law in Catholicism?", "gold": "the Church's hierarchical authorities", "pred": "The Church's hierarchical authorities.", "em": 0, "loss": 7.280614376068115}
+{"question": "What does HP stand for?", "gold": "Hewlett-Packard", "pred": "Hewlett-Packard", "em": 1, "loss": 2.076749563217163}
+{"question": "What record amount of TEUs did Piraeus handle in 2013?", "gold": "3.16 million", "pred": "3.16 million TEUs.", "em": 0, "loss": 4.959136962890625}
+{"question": "Who was the first leader of a unified Greece?", "gold": "Phillip II", "pred": "Philip II.", "em": 0, "loss": 5.662552833557129}
+{"question": "What was a first for this network", "gold": "to make the hosts responsible for reliable delivery of data, rather than the network itself", "pred": "Making hosts responsible for reliable delivery of data", "em": 0, "loss": 5.2669677734375}
+{"question": "When will the sequel to Spectre being development?", "gold": "spring 2016.", "pred": "In spring 2016.", "em": 0, "loss": 3.380117654800415}
+{"question": "According to which government agency is GE a leading producer of Superfund toxic waste sites?", "gold": "EPA", "pred": "The US Government.", "em": 0, "loss": 7.630645751953125}
+{"question": "The west end of these streets is Third Avenue and where?", "gold": "Bowery", "pred": "Bowery and Sixth Avenue.", "em": 0, "loss": 4.692892551422119}
+{"question": "When was WKY granted a federal license?", "gold": "1921", "pred": "1921\n\nThe answer is: 1921.", "em": 0, "loss": 2.2991294860839844}
+{"question": "What is the largest stadium in Latin America?", "gold": "Azteca Stadium", "pred": "Azteca Stadium.", "em": 0, "loss": 6.605647087097168}
+{"question": "Name one Asian architectural writer.", "gold": "Kao Gong Ji", "pred": "Kao Gong Ji\n\nThe question asks for an Asian architectural writer, so we", "em": 0, "loss": 5.2947916984558105}
+{"question": "What purpose does the National Archive YouTube channel serve?", "gold": "showcase popular archived films", "pred": "To showcase popular archived films.", "em": 0, "loss": 8.630935668945312}
+{"question": "To which Galilean city did Joseph and Mary take Jesus?", "gold": "Nazareth", "pred": "Nazareth.", "em": 0, "loss": 5.374650001525879}
+{"question": "What had the Yuan used to print its money before bronze plates?", "gold": "woodblocks", "pred": "Woodblocks.", "em": 0, "loss": 6.076011657714844}
+{"question": "Who suggested that Jesus was the son of a Roman soldier?", "gold": "Celsus", "pred": "Celsus", "em": 1, "loss": 6.146225929260254}
+{"question": "What newspaper suggested that Congress would ignore Puerto Rico's referendum?", "gold": "The Hill", "pred": "The Hill", "em": 1, "loss": 11.508328437805176}
+{"question": "Who was Zeus's sister?", "gold": "Hera", "pred": "Hera.", "em": 0, "loss": 8.426445960998535}
+{"question": "What is the trinity in Christianity?", "gold": "one God in three persons", "pred": "The doctrine of the Trinity in Christianity describes God as one God in three persons.", "em": 0, "loss": 2.112849473953247}
+{"question": "Who rejected attempts to introduce the Carnival in Bogotá?", "gold": "the government", "pred": "Government.", "em": 0, "loss": 5.232293605804443}
+{"question": "What was the location of the pollution caused by GE in the Housatonic River?", "gold": "Pittsfield, Massachusetts", "pred": "The Housatonic River is located in Pittsfield, Massachusetts.", "em": 0, "loss": 2.1485607624053955}
+{"question": "Who did Nasser appoint to run Syria?", "gold": "Sarraj", "pred": "Sarraj\n\nSarraj was appointed by Nasser to run Syria after his", "em": 0, "loss": 3.701725482940674}
+{"question": "What airplane was shot down in July 1988 that a famous foreign correspondent from The Times wrote an article about that later lead to his resignation?", "gold": "Iran Air Flight 655", "pred": "Iran Air Flight 655\n\nThe question asks about an aircraft that was", "em": 0, "loss": 2.679525852203369}
+{"question": "Who is the protagonist is Legend of Zelda?", "gold": "Link", "pred": "Link.", "em": 0, "loss": 7.00643253326416}
+{"question": "How does Alaska compare with other states in church membership?", "gold": "least religious states of the USA", "pred": "Least religious states among the US.", "em": 0, "loss": 6.85156774520874}
+{"question": "Who previously held the record for being the oldest quarterback to play in a Super Bowl?", "gold": "John Elway", "pred": "John Elway.", "em": 0, "loss": 6.315014362335205}
+{"question": "Besides Carnival, what other major cruise line parks its record-breaking cruise ships in Southampton Water?", "gold": "Royal Caribbean", "pred": "P&O Cruises.", "em": 0, "loss": 4.292129993438721}
+{"question": "How did whitehead define \"experience\"?", "gold": "He used the term \"experience\" very broadly, so that even inanimate processes such as electron collisions are said to manifest some degree of experience", "pred": "Broadly defined, everything is constituted by its experience.", "em": 0, "loss": 4.094394683837891}
+{"question": "Along with Port Miami, Watson Island and Brickell, what area is in Downtown Miami?", "gold": "Virginia Key", "pred": "Virginia Key.", "em": 0, "loss": 8.987189292907715}
+{"question": "An insect recalling a specific location for up to a year is called what?", "gold": "philopatry", "pred": "Philopatry", "em": 1, "loss": 3.2025375366210938}
+{"question": "What was Sega's competitor to the NES called in the US?", "gold": "Genesis", "pred": "Genesis\nThe question asks about Sega's competitor to the NES in the United States", "em": 0, "loss": 3.5981802940368652}
+{"question": "What garage rock classic was recorded by The Kingsmen?", "gold": "\"Louie Louie\"", "pred": "\"Louie Louie\".", "em": 0, "loss": 4.311751365661621}
+{"question": "What sections of the Vedas did the Verdanta school favor?", "gold": "latter parts", "pred": "jñānakāṇḍa\n\nThe Vedanta school favored the j", "em": 0, "loss": 4.324965000152588}
+{"question": "In what century did the Nationalistic revolutions occur?", "gold": "mid-19th century's", "pred": "Mid-19th century", "em": 0, "loss": 1.0409314632415771}
+{"question": "When was the first Czechoslovak Republic?", "gold": "1918–1938", "pred": "1918-1938\n\nThis question asks about the", "em": 0, "loss": 2.987144947052002}
+{"question": "Who was Frédéric Chopin?", "gold": "Famous musicians", "pred": "A renowned composer.", "em": 0, "loss": 7.6560211181640625}
+{"question": "Carranza met with his opposition at a meeting called what?", "gold": "Convention of Aguascalientes", "pred": "Convention of Aguascalientes.", "em": 0, "loss": 4.554989814758301}
+{"question": "On what do aspects of the rule of law do formalist definitions focus?", "gold": "specific procedural attributes", "pred": "Procedural attributes.", "em": 0, "loss": 5.948944091796875}
+{"question": "What kind of marble was used for the walls and floors of the abbey?", "gold": "Purbeck", "pred": "Purbeck marble was used for the walls and floors of Westminster Abbey.", "em": 0, "loss": 2.797254800796509}
+{"question": "To whom did Nasser give authority to deal with Israel?", "gold": "Arafat", "pred": "To Yasser Arafat.", "em": 0, "loss": 4.022311687469482}
+{"question": "In kilometers, how far away from the Plymouth city center was Plymouth City Airport?", "gold": "6", "pred": "4 miles To calculate the distance in kilometers:\n\n1 mile ≈ 1", "em": 0, "loss": 3.4715287685394287}
+{"question": "Which type of PCB construction technique was used first?", "gold": "through-hole", "pred": "Through-hole technology.", "em": 0, "loss": 9.00036907196045}
+{"question": "What are the parts that merged into the Canadian Joint Operations Command?", "gold": "Canada Command, the Canadian Expeditionary Force Command and the Canadian Operational Support Command", "pred": "Canada Command, the Canadian Expeditionary Force Command, and the Canadian Operational Support Command", "em": 0, "loss": 3.839535713195801}
+{"question": "Who met in peace talks with France at Geneva?", "gold": "Chinese", "pred": "The French and Chinese reconvened Geneva peace talks.", "em": 0, "loss": 5.1934494972229}
+{"question": "What is the basis of Simpson's unity?", "gold": "color and colonial subjection", "pred": "Color and colonial subjection.", "em": 0, "loss": 7.157248020172119}
+{"question": "What does Rajan feel has created deep financial fault lines?", "gold": "systematic economic inequalities", "pred": "Systematic economic inequalities.", "em": 0, "loss": 6.7549591064453125}
+{"question": "What are chares?", "gold": "Narrow alleys", "pred": "Narrow alleys or 'chares'.", "em": 0, "loss": 5.73036003112793}
+{"question": "In which year did the gallery of Indian art open?", "gold": "1991", "pred": "1991", "em": 1, "loss": 2.2062795162200928}
+{"question": "What did Darwin decide to do with the profits of the American version of On the Origin of Species?", "gold": "asked Gray to keep any profits", "pred": "Keep any profits from the American version of On the Origin of Species.", "em": 0, "loss": 4.45396089553833}
+{"question": "What figure of speech is the word heresy commonly used as in present day scenarios?", "gold": "metaphors", "pred": "Metaphor\n\nThis phrase uses the context provided about how the term \"her", "em": 0, "loss": 4.530527591705322}
+{"question": "Who calls the four immeasurable minds \"four limitless ones\"?", "gold": "Pema Chödrön", "pred": "Pema Chödrön", "em": 1, "loss": 2.237074613571167}
+{"question": "What quantity of yearly rainfall does Seattle have during the winter?", "gold": "half", "pred": "Half of its annual rainfall by volume.", "em": 0, "loss": 5.5246405601501465}
+{"question": "What could the sun's energy do to help limit climate change?", "gold": "could play a key role in de-carbonizing the global economy alongside improvements in energy efficiency and imposing costs on greenhouse gas emitters", "pred": "Provide a significant portion of the world's energy by 2060 through", "em": 0, "loss": 3.6009445190429688}
+{"question": "In what year did the first communist country open its borders to all foreign visitors?", "gold": "1967", "pred": "1967", "em": 1, "loss": 2.375697612762451}
+{"question": "What does the abbreviation STOIC stand for?", "gold": "Student Television of Imperial College", "pred": "Student Television of Imperial College", "em": 1, "loss": 8.878536224365234}
+{"question": "Who wrote The Principles of Geology?", "gold": "Charles Lyell", "pred": "Charles Lyell.", "em": 0, "loss": 4.548826694488525}
+{"question": "IBM sold its personal computer business to what company?", "gold": "Lenovo", "pred": "Lenovo.", "em": 0, "loss": 5.7360520362854}
+{"question": "Name some of the county rivers", "gold": "the Axe, Brue, Cary, Parrett, Sheppey, Tone and Yeo", "pred": "Axe, Brue, Cary, Parrett, Sheppey, Tone,", "em": 0, "loss": 4.953804016113281}
+{"question": "What determined whether The Bahre-Nagassi fought with or against the Abyssinians?", "gold": "geopolitical circumstances", "pred": "Geopolitical circumstances.", "em": 0, "loss": 5.437237739562988}
+{"question": "What is the life expectancy in Namibia?", "gold": "52.2", "pred": "52.2 years", "em": 0, "loss": 4.779212951660156}
+{"question": "What creates segments called a \"frame\"?", "gold": "codecs", "pred": "Codec analysis.", "em": 0, "loss": 8.654939651489258}
+{"question": "The traffic coming west of the city is from where?", "gold": "unité urbaine", "pred": "From the GCO project.", "em": 0, "loss": 6.361793518066406}
+{"question": "Which unpopular republic destroyed centuries of Swiss traditions?", "gold": "Helvetic", "pred": "The Helvetic Republic.", "em": 0, "loss": 5.6203694343566895}
+{"question": "What is one of the most complex characters in modern Chinese dictionaries?", "gold": "U+9F49", "pred": "齉 (nàng) with 36 strokes.", "em": 0, "loss": 4.411975383758545}
+{"question": "What planet did the reporters decide the signals were from?", "gold": "Mars", "pred": "Mars.", "em": 0, "loss": 5.948534965515137}
+{"question": "How many of the remaining launches were successful?", "gold": "Five", "pred": "five out of six\n\nThis question asks about the number of successful launches among the", "em": 0, "loss": 3.7135512828826904}
+{"question": "Super Bowl 50 determined the NFL champion for what season?", "gold": "2015", "pred": "2015 season\n\nThe question asks about the championship season determined by", "em": 0, "loss": 4.300045967102051}
+{"question": "How are goods imported to Norfolk Island?", "gold": "by ship", "pred": "Ships bring goods to Norfolk Island.", "em": 0, "loss": 5.178755760192871}
+{"question": "What is one function that prime numbers have that 1 does not?", "gold": "the sum of divisors function", "pred": "Euler's totient function.", "em": 0, "loss": 2.253380537033081}
+{"question": "How many geomorphologic formations is Warsaw on?", "gold": "two", "pred": "Two.", "em": 0, "loss": 7.0933451652526855}
+{"question": "Where was the torch event held in Vietnam?", "gold": "Ho Chi Minh City", "pred": "Ho Chi Minh City.", "em": 0, "loss": 3.276885509490967}
+{"question": "Dragonflys use what kind of propulsion?", "gold": "jet", "pred": "Jet propulsion.", "em": 0, "loss": 6.749692916870117}
+{"question": "in the period of  1600 what Canton cross repesented England", "gold": "St George's Cross", "pred": "St George's Cross", "em": 1, "loss": 4.290376663208008}
+{"question": "When did the launches of boilerplate CSMs occur in orbit?", "gold": "1964 and 1965", "pred": "In 1964 and 1965.", "em": 0, "loss": 1.938611626625061}
+{"question": "Modern treaties typically outline the procedures for the peaceful resolution of what?", "gold": "disputes", "pred": "Disputes over interpretations.", "em": 0, "loss": 4.760678291320801}
+{"question": "To ensure a minimum density of signal transitions  remains in the bitsream, what does USB use?", "gold": "bit stuffing", "pred": "Bit stuffing.", "em": 0, "loss": 8.539780616760254}
+{"question": "Aside from the sword, what is another weapon that Link can use?", "gold": "Nunchuk", "pred": "Two.", "em": 0, "loss": 7.0933451652526855}
+{"question": "In what year did Shell agree to settle the lawsuits filed in 1996?", "gold": "2009", "pred": "2009\nJustification: The question asks about when Shell settled", "em": 0, "loss": 4.223488807678223}
+{"question": "When was the Royal College of Chemistry established?", "gold": "1845", "pred": "In 1845.", "em": 0, "loss": 3.080934524536133}
+{"question": "The first Permanent Colony in Florida is Now known as", "gold": "what is now Duval County, Baker County, St. Johns County and Nassau County", "pred": "Jacksonville, FL.", "em": 0, "loss": 3.320713520050049}
+{"question": "when was the height of mosaic art in sicily?", "gold": "the 12th century", "pred": "The heyday of mosaic making in Sicily was the age of the independent Norman", "em": 0, "loss": 3.5581934452056885}
+{"question": "What year was ground-based air defence taken from RAF?", "gold": "2004", "pred": "2004", "em": 1, "loss": 1.7958035469055176}
+{"question": "In which year were English football clubs banned from competition in Europe?", "gold": "1985", "pred": "1985\n\nThe context mentions that after the Heysel Stadium", "em": 0, "loss": 4.527456760406494}
+{"question": "What leader did Nasser applaud?", "gold": "Eisenhower", "pred": "Eisenhower\n\nThis is because the passage states that Nasser praised Eisenhower's \"g", "em": 0, "loss": 4.298043251037598}
+{"question": "How much funding was blocked?", "gold": "$244 million", "pred": "$244 million", "em": 1, "loss": 3.9516193866729736}
+{"question": "How high are many of the buildings with turrets?", "gold": "four stories", "pred": "Four stories high.", "em": 0, "loss": 7.77687406539917}
+{"question": "What is an airport?", "gold": "aerodrome with facilities for flights to take off and land", "pred": "Aerodrome with facilities for flights.", "em": 0, "loss": 4.6667256355285645}
+{"question": "What term means 'little eyes'?", "gold": "ocelli", "pred": "Ocelli.", "em": 0, "loss": 6.015481472015381}
+{"question": "When hydrogen gas is in standard temperature and pressure, what form is it considered in>", "gold": "normal", "pred": "Normal form", "em": 0, "loss": 7.653615951538086}
+{"question": "What traits did researchers use to divide the ten periods?", "gold": "social, economic and cultural characteristics", "pred": "Social, economic and cultural characteristics.", "em": 0, "loss": 3.4685847759246826}
+{"question": "What did samurai become in 1873?", "gold": "Shizoku", "pred": "Shizoku (士族).", "em": 0, "loss": 5.898001194000244}
+{"question": "What is one called that believes he has the one religion, but that the others aren't necessarily wrong?", "gold": "pluralism", "pred": "Religious pluralism\n\nThis phrase describes the concept of believing in one's own religion", "em": 0, "loss": 3.1495108604431152}
+{"question": "How long do members of both houses of the Swiss Parliament serve?", "gold": "4 years", "pred": "Four years.", "em": 0, "loss": 7.065381050109863}
+{"question": "What was the name of the first real-time software MP3 player?", "gold": "WinPlay3", "pred": "WinPlay3", "em": 1, "loss": 7.977685928344727}
+{"question": "What was the child's name?", "gold": "Blue Ivy Carter", "pred": "Blue Ivy Carter.", "em": 0, "loss": 5.982181072235107}
+{"question": "What was the first cup Barcelona won?", "gold": "Copa Macaya", "pred": "The first cup Barcelona won was the Copa Macaya in 1902", "em": 0, "loss": 4.140366077423096}
+{"question": "What method was was used to obtain the measurement?", "gold": "watt-balance measurement", "pred": "Three watt-balance measurements.", "em": 0, "loss": 6.285323143005371}
+{"question": "Which member state declined to sign the Social Charter?", "gold": "The UK", "pred": "United Kingdom (UK)", "em": 0, "loss": 2.5105843544006348}
+{"question": "What has been developed in the U.S. to help hunters?", "gold": "different technologies", "pred": "iPhones apps.", "em": 0, "loss": 9.059093475341797}
+{"question": "Who funds the IPCC's Deputy Secretary?", "gold": "United Nations Environment Programme", "pred": "WMO\n\nThis context explains that the IPCC, an organization involved in climate change", "em": 0, "loss": 4.048060894012451}
+{"question": "What year was Twilight Princess the most critically acclaimed game?", "gold": "2006", "pred": "2006\nJustification: The context explicitly states that Twilight Princess", "em": 0, "loss": 4.121438026428223}
+{"question": "What island was given to the British?", "gold": "Hong Kong Island", "pred": "Hong Kong Island\n\nThis context provides information about the First Opium War between China", "em": 0, "loss": 3.196758985519409}
+{"question": "What was Sega's competitor to the NES called in Japan?", "gold": "Mega Drive", "pred": "The Mega Drive.", "em": 0, "loss": 9.827068328857422}
+{"question": "What sea plankton doe many sea creatures rely on to live?", "gold": "phytoplankton", "pred": "Phytoplankton.", "em": 0, "loss": 2.434086799621582}
+{"question": "What bacteria do in fruiting bodies?", "gold": "multicellular organisation", "pred": "Bacteria perform separate tasks.", "em": 0, "loss": 6.217846870422363}
+{"question": "Who is Admiral Sir Mark Stanhope?", "gold": "former head of the Royal Navy", "pred": "Former head of the Royal Navy.", "em": 0, "loss": 3.963099241256714}
+{"question": "What specific component of Blu-Ray disc have also gotten less expensive to make?", "gold": "diodes", "pred": "Diodes.", "em": 0, "loss": 5.908514976501465}
+{"question": "What was the advantage that the LOR method produced in the event of a spacecraft failure?", "gold": "spacecraft to be used as a \"lifeboat\"", "pred": "Lifeboat capability", "em": 0, "loss": 9.519088745117188}
+{"question": "The boundary line of what year formed the 1953 armistice line?", "gold": "1950", "pred": "1950", "em": 1, "loss": 1.9905935525894165}
+{"question": "What is the predominant language in Switzerland?", "gold": "German", "pred": "German-speaking.", "em": 0, "loss": 8.535505294799805}
+{"question": "Aside from finding out what underlying phonemes are there what does the phonological study of a language try to find out about the language?", "gold": "sound inventory", "pred": "Determining the sound inventory of the language.", "em": 0, "loss": 4.000710487365723}
+{"question": "How many people are in Boston during work hours?", "gold": "1.2 million", "pred": "1.2 million\n\nThis question asks specifically about the number of people present", "em": 0, "loss": 3.6018524169921875}
+{"question": "Which foreign forces often meddled in the Mongolian political scene?", "gold": "the Chinese dynasties to the south", "pred": "Chinese dynasties.", "em": 0, "loss": 4.291317939758301}
+{"question": "How long did the plan last?", "gold": "3 years", "pred": "3 years\n\nThe question asks how long the plan lasted, which was stated", "em": 0, "loss": 3.741272449493408}
+{"question": "What happens to the silicate slag  during the flash smelting process?", "gold": "floats on top", "pred": "Floats on top.", "em": 0, "loss": 5.4713287353515625}
+{"question": "What do birds need to change to meet the demands of migration?", "gold": "their metabolism", "pred": "Metabolism, fat storage, sleep regulation, feather maintenance, and behavioral adjustments", "em": 0, "loss": 4.367615699768066}
+{"question": "On what date did the World Trade Center PATH begin operation?", "gold": "July 19, 1909", "pred": "July 19, 1909.", "em": 0, "loss": 1.6675217151641846}
+{"question": "What was the name of Takakura's successor?", "gold": "Antoku", "pred": "Antoku.", "em": 0, "loss": 10.476926803588867}
+{"question": "Who decided to place Beyonce's group in Star Search the talent show?", "gold": "Arne Frager", "pred": "Arne Frager", "em": 1, "loss": 6.355790615081787}
+{"question": "What was done to have the privilege of working on an NES for repair?", "gold": "paying a fee", "pred": "Paying a fee to Nintendo.", "em": 0, "loss": 5.97224235534668}
+{"question": "What is the theoretical maximum efficiency of reflective capsule bulbs?", "gold": "270 lm/W", "pred": "270 lm/W\n\nTheoretical maximum efficiency of reflective capsule bulbs is", "em": 0, "loss": 5.005168437957764}
+{"question": "Who purchased the International Petroleum Exchange in 2001?", "gold": "IntercontinentalExchange (ICE)", "pred": "Goldman Sachs, Morgan Stanley, and BP.", "em": 0, "loss": 3.535762071609497}
+{"question": "When did the Hounslow Heath Aerodrome begin to operate scheduled international commercial services?", "gold": "August 1919", "pred": "August 1919\nThis is a historical context about early airports during", "em": 0, "loss": 4.129337787628174}
+{"question": "What was the name of the 1st multiple button mouse introduced by Apple?", "gold": "Mighty Mouse", "pred": "The first multiple button mouse introduced by Apple was the Mighty Mouse.", "em": 0, "loss": 4.457426071166992}
+{"question": "In what year was Nash removed as architect?", "gold": "1829", "pred": "1829\n\nThis question tests your ability to extract specific information from", "em": 0, "loss": 3.2567083835601807}
+{"question": "Name the accent spoken in the area?", "gold": "The Philadelphia dialect", "pred": "The accent spoken in the area is the Philadelphia dialect.", "em": 0, "loss": 4.597244739532471}
+{"question": "What is the national capital of India?", "gold": "New Delhi", "pred": "New Delhi", "em": 1, "loss": 5.353020668029785}
+{"question": "Is a person's brain fully developed by the time they reach puberty?", "gold": "not", "pred": "No.", "em": 0, "loss": 1.2481122016906738}
+{"question": "What munition hit Kerry's boat?", "gold": "a B-40 rocket", "pred": "A B-40 rocket.", "em": 0, "loss": 5.039274215698242}
+{"question": "What percentage of Norfolk Island voters were against the changes brought by Australia?", "gold": "68%", "pred": "68%", "em": 1, "loss": 4.322707176208496}
+{"question": "Which empires grew during the 18th century?", "gold": "European states", "pred": "European empires", "em": 0, "loss": 4.010687351226807}
+{"question": "Rather than copying media files directly to it, what software must be used for this purpose so that they are accessible?", "gold": "iTunes", "pred": "Third-party applications.", "em": 0, "loss": 5.531126499176025}
+{"question": "How is winter weather in Jacksonville described as?", "gold": "mild", "pred": "Mild and sunny.", "em": 0, "loss": 5.3755903244018555}
+{"question": "Who sent him the letter informing him of his mother's death?", "gold": "Cardinal Eugenio Pacelli", "pred": "Cardinal Eugenio Pacelli\n\nContext: In February 1939", "em": 0, "loss": 2.3029370307922363}
+{"question": "Penumata psychikon is usually translated as what?", "gold": "animal spirits", "pred": "Animal spirits.", "em": 0, "loss": 5.972429275512695}
+{"question": "What have peridinin-type chloroplasts lost?", "gold": "the red algal endosymbiont's original cell membrane", "pred": "Outermost membrane.", "em": 0, "loss": 6.897539138793945}
+{"question": "How many homes in London were destroyed in London?", "gold": "More than one million", "pred": "Over 1 million", "em": 0, "loss": 2.211310625076294}
+{"question": "What was legitimate knowledge no longer defined by?", "gold": "texts in the religious schools", "pred": "Texts in the religious schools.", "em": 0, "loss": 4.667216777801514}
+{"question": "When did true birds first appear?", "gold": "Cretaceous period", "pred": "100 million years ago.", "em": 0, "loss": 3.0570669174194336}
+{"question": "Which rail line operates in Melbourne?", "gold": "Metro Trains Melbourne", "pred": "Metro Trains Melbourne.", "em": 0, "loss": 6.2179718017578125}
+{"question": "What is the largest music festival in Germany?", "gold": "Rock am Ring", "pred": "Rock am Ring festival.", "em": 0, "loss": 9.919166564941406}
+{"question": "What was the cost of the damage of the 1886 earthquake to the city of Charleston?", "gold": "$6 million", "pred": "$6 million\n\nThe question asks for the cost of the damage from the", "em": 0, "loss": 3.399585247039795}
+{"question": "What are the major branches of Protestantism?", "gold": "Adventist, Anglican, Baptist, Calvinist (Reformed), Lutheran, Methodist and Pentecostal", "pred": "The major branches of Protestantism include the Adventist, Anglican, Baptist,", "em": 0, "loss": 2.6942403316497803}
+{"question": "Which college was founded in 1876?", "gold": "City and Guilds College", "pred": "City and Guilds College", "em": 1, "loss": 2.7555055618286133}
+{"question": "Where did Von Neumann begin to lecture in 1928?", "gold": "University of Berlin", "pred": "The University of Berlin.", "em": 0, "loss": 6.559181213378906}
+{"question": "What city hosts Arnold's Sports Festival each year?", "gold": "Columbus, Ohio", "pred": "Columbus, Ohio.", "em": 0, "loss": 3.382540464401245}
+{"question": "Who inspired Beyoncé to take control of her career?", "gold": "Madonna", "pred": "Madonna.", "em": 0, "loss": 5.508612632751465}
+{"question": "The average contractor hired how many employees?", "gold": "fewer than 10 employees", "pred": "Fewer than 10.", "em": 0, "loss": 1.7967742681503296}
+{"question": "John XXIII offered to mediate between who?", "gold": "US President John F. Kennedy and Nikita Khrushchev", "pred": "US President John F. Kennedy and Nikita Khrushchevee.", "em": 0, "loss": 2.487044095993042}
+{"question": "What is the name of the largest town or city renamed in Tito's name?", "gold": "Titograd", "pred": "Titograd\nExplanation: The question asks for the name of the largest town or", "em": 0, "loss": 3.6471610069274902}
+{"question": "What kind of membrane came from the host?", "gold": "phagosomal", "pred": "Phagocytic vacuole.", "em": 0, "loss": 3.1074280738830566}
+{"question": "What was Tesla's position with Westinghouse?", "gold": "consultant", "pred": "Consultant", "em": 1, "loss": 4.277475833892822}
+{"question": "When was the Old Testament translated into Greek?", "gold": "3rd century BCE", "pred": "3rd century BCE\n\nThe Old Testament was translated into Greek during the", "em": 0, "loss": 3.3630218505859375}
+{"question": "What pub is featured on EastEnders?", "gold": "The Queen Vic", "pred": "The Queen Vic.", "em": 0, "loss": 8.521549224853516}
+{"question": "What type of storm is The Scooter on Neptune?", "gold": "southern cyclonic storm", "pred": "White cloud group", "em": 0, "loss": 9.279891967773438}
+{"question": "What are two organisms that have more non-repetitive than repetitive DNA?", "gold": "C. elegans and fruit fly", "pred": "E. coli, C. elegans, and fruit fly.", "em": 0, "loss": 2.47928524017334}
+{"question": "What type of vegetation is in central Nigeria?", "gold": "savannah", "pred": "Grassland and some scattered trees.", "em": 0, "loss": 4.300137042999268}
+{"question": "What is the Arabic term for existence?", "gold": "Wujud", "pred": "Wujud\n\nThe Arabic term for existence is Wujud.", "em": 0, "loss": 3.699321985244751}
+{"question": "What government entity was abolished in 1986?", "gold": "The Greater London Council", "pred": "The Greater London Council was abolished in 1986.", "em": 0, "loss": 2.2240078449249268}
+{"question": "What's the Dutch word for \"money\"?", "gold": "geld", "pred": "Geld\n\nThis context discusses various sound shifts in Dutch dialects, particularly focusing on", "em": 0, "loss": 4.81174373626709}
+{"question": "UNFPA groups what area in the same geographic region as the Arab States?", "gold": "Europe", "pred": "The Middle East and North Africa (MENA).", "em": 0, "loss": 2.704874038696289}
+{"question": "When did it reach 2 million occupants>", "gold": "1950", "pred": "1950", "em": 1, "loss": 1.9905935525894165}
+{"question": "What kind of fraud financially benefits a drug company?", "gold": "Pharmaceutical fraud", "pred": "Pharmaceutical fraud financially benefits a drug company by bringing financial gain.", "em": 0, "loss": 4.197998046875}
+{"question": "When did Henry issue the Edict of Nantes?", "gold": "1598", "pred": "In 1598.", "em": 0, "loss": 3.6960532665252686}
+{"question": "When was Zia-ul-Haq killed?", "gold": "1988", "pred": "1988.", "em": 0, "loss": 2.9633731842041016}
+{"question": "One of the Assistant Chiefs of the Defence Staff is for Reserves and what?", "gold": "Cadets", "pred": "The Assistant Chief of the Defence Staff (Reserves and Cadets).", "em": 0, "loss": 3.298922538757324}
+{"question": "How much money did Nasser spend on weapons?", "gold": "US$320,000,000", "pred": "$320,000,000\n\nThis answer is", "em": 0, "loss": 2.128162145614624}
+{"question": "Who does Barbara Anderson feel the church's policy regarding sexual abuse protects?", "gold": "pedophiles", "pred": "Pedophiles.", "em": 0, "loss": 5.115869998931885}
+{"question": "Would you consider aesthetic elements alone in architectural lighting design?", "gold": "kno", "pred": "Yes.", "em": 0, "loss": 1.2576221227645874}
+{"question": "What factor was used to expel or include citizens in the  Lausanne Treaty ?", "gold": "agreed to use religion as the determinant for ethnic identity for the purposes of population exchange", "pred": "Religion", "em": 0, "loss": 4.087854862213135}
+{"question": "Where was Polybius forced to go as hostage?", "gold": "Rome", "pred": "Rome\n\nThis context provides information about the history of the Hellenistic period and", "em": 0, "loss": 3.2412586212158203}
+{"question": "What is 'Keh Chiang' a romanization for?", "gold": "Zhejiang", "pred": "Zhejiang.", "em": 0, "loss": 4.991020679473877}
+{"question": "According to legend, who took the Santo Caliz to Rome?", "gold": "St. Peter", "pred": "Saint Peter.", "em": 0, "loss": 7.308694362640381}
+{"question": "How did Estonians view the demographic change of less ethnic Estonians?", "gold": "a national catastrophe", "pred": "National catastrophe.", "em": 0, "loss": 9.767814636230469}
+{"question": "What happens to zinc when it is manipulated to the temperatures between 100 and 150 Celsius?", "gold": "becomes malleable", "pred": "Malleable.", "em": 0, "loss": 5.036153316497803}
+{"question": "What term did not appear until the early 19th century?", "gold": "classical music", "pred": "classical music", "em": 1, "loss": 6.082236289978027}
+{"question": "Municipalities have how many major policy responsibilities?", "gold": "local governments can justify", "pred": "Two.", "em": 0, "loss": 7.0933451652526855}
+{"question": "Purpose of Telnet", "gold": "making ARPANET technology public", "pred": "To make ARPANET technology public.", "em": 0, "loss": 5.909632682800293}
+{"question": "The majority of all households in Himachal own a what?", "gold": "pit-loom", "pred": "Pit-loom.", "em": 0, "loss": 6.849859714508057}
+{"question": "How many nations already have renewable energy contributing to more than 20 percent of energy supply?", "gold": "at least 30 nations", "pred": "30 nations.", "em": 0, "loss": 7.149557113647461}
+{"question": "What type of anthropology tries to understand the social aspects of mass media?", "gold": "Media anthropology", "pred": "Media anthropology", "em": 1, "loss": 13.26308822631836}
+{"question": "What is the term that means all in the Bible is true?", "gold": "inerrancy", "pred": "Inerrancy", "em": 1, "loss": 8.268556594848633}
+{"question": "When were the French wars of religion?", "gold": "16th century", "pred": "16th century\n\nWhen were the French Wars of Religion? Answer:", "em": 0, "loss": 3.7888166904449463}
+{"question": "What memorial was built years after Genghis Khan's death and burial?", "gold": "The Genghis Khan Mausoleum", "pred": "The Genghis Khan Mausoleum.", "em": 0, "loss": 3.2146289348602295}
+{"question": "What is a key difference between the ARB and Royal Institute?", "gold": "RIBA also validates courses outside the UK", "pred": "The RIBA also validates courses outside the UK.", "em": 0, "loss": 4.676955699920654}
+{"question": "Who may place legislation on a corrections calendar?", "gold": "minority leader", "pred": "The Speaker, after consultation with the minority leader, may do so.", "em": 0, "loss": 4.109179973602295}
+{"question": "What company included the soundtrack as a reward for ordering the game prior to release?", "gold": "GameStop", "pred": "GameStop", "em": 1, "loss": 7.447160720825195}
+{"question": "What underworld god possess Rajasthanis?", "gold": "Bhaironji", "pred": "Bhaironji.", "em": 0, "loss": 8.610321044921875}
+{"question": "What type of issues are members typically allowed to vote as they please?", "gold": "moral", "pred": "Moral issues.", "em": 0, "loss": 5.970118045806885}
+{"question": "Who designed Queen's logo?", "gold": "Mercury", "pred": "Mercury designed Queen's logo.", "em": 0, "loss": 6.69128942489624}
+{"question": "Who declared the centrality of humanity and agnosticism?", "gold": "Sophists", "pred": "The Sophists.", "em": 0, "loss": 7.306727886199951}
+{"question": "What about inland?", "gold": "Ourense", "pred": "Cool.", "em": 0, "loss": 3.694035530090332}
+{"question": "Around what time were the knights and szlachta very similiar?", "gold": "Around the 14th century", "pred": "The 14th century.", "em": 0, "loss": 3.019787549972534}
+{"question": "What did racial bias generally mean for Chinese people?", "gold": "they did not take white spouses", "pred": "Discrimination.", "em": 0, "loss": 2.5597870349884033}
+{"question": "What are the top-selling form factors of the Mac platform today?", "gold": "MacBooks", "pred": "MacBook laptops.", "em": 0, "loss": 6.388150691986084}
+{"question": "What is kushaya ematsambo used for?", "gold": "to determine the cause of the sickness", "pred": "Bone throwing skill is used to determine the cause of sickness.", "em": 0, "loss": 4.5724406242370605}
+{"question": "Where does education usually take place under?", "gold": "the guidance of educators", "pred": "In formal or informal settings.", "em": 0, "loss": 5.651771545410156}
+{"question": "After the team moved to what city were the cannon left off the crest?", "gold": "Highbury", "pred": "Highbury.", "em": 0, "loss": 5.610143184661865}
+{"question": "When did youtube launch its first app for the iPhone?", "gold": "September 2012", "pred": "September 2012", "em": 1, "loss": 1.1772429943084717}
+{"question": "On what days were Scottish and Welsh pubs often 'dry'?", "gold": "Sundays", "pred": "Sundays.", "em": 0, "loss": 5.908449172973633}
+{"question": "How many dead troops leave behind?", "gold": "1,000 dead", "pred": "1,000", "em": 0, "loss": 2.235949993133545}
+{"question": "Which notable government official did The Times ally with in the 1930s whom practised German appeasement?", "gold": "Neville Chamberlain", "pred": "Neville Chamberlain.", "em": 0, "loss": 4.1895551681518555}
+{"question": "Which of the Great Lakes does I-75 pass next to?", "gold": "Lake Erie", "pred": "Lake Erie.", "em": 0, "loss": 5.764040470123291}
+{"question": "Where does London rank in terms of metropolitan area GDP?", "gold": "fifth-or sixth-largest", "pred": "Fifth or sixth-largest\n\nThis context highlights London's economic significance, including its status", "em": 0, "loss": 5.229208946228027}
+{"question": "When did Houston suffer an economic decline?", "gold": "late 1980s", "pred": "Late 1980s.", "em": 0, "loss": 1.2917448282241821}
+{"question": "Who was not being briefed on the operational plans or the number of troops in combat?", "gold": "Chinese commanders", "pred": "The Chinese commanders.", "em": 0, "loss": 10.841050148010254}
+{"question": "Which two figures clashed over leadership of the Congo in 1997?", "gold": "Lissouba and Sassou", "pred": "Lissouba and Sassou.", "em": 0, "loss": 5.458232402801514}
+{"question": "How big is the largest forest in Yale's possession?", "gold": "7,840-acre", "pred": "7,840 acres.", "em": 0, "loss": 4.022466659545898}
+{"question": "What does the green colour of Malachite on the Golden Boot represent?", "gold": "the green field of play", "pred": "Green field of play.", "em": 0, "loss": 4.811942100524902}
+{"question": "What was another regional leader involved in the origins of szlachta?", "gold": "Alexander the Great", "pred": "Regional leaders who had not mixed their bloodlines with those of slaves, prisoners,", "em": 0, "loss": 4.219488143920898}
+{"question": "The 1920x1080p25 notion identifies progressive scanning format with how many frames per second?", "gold": "25", "pred": "25 fps\n\nThe 1920x1080", "em": 0, "loss": 3.3341448307037354}
+{"question": "What do Islamic anti-masonics link Freemasonry to?", "gold": "al-Masih ad-Dajjal (the false Messiah", "pred": "The false Messiah and destruction of the Al-Aqsa Mosque.", "em": 0, "loss": 4.842767238616943}
+{"question": "What happens first if a Directive's deadline for implementation is not met?", "gold": "the member state cannot enforce conflicting laws, and a citizen may rely on the Directive in such an action", "pred": "Member state cannot enforce conflicting laws.", "em": 0, "loss": 6.470987796783447}
+{"question": "What is the only story of the original series where Doctor Who travels alone?", "gold": "The Deadly Assassin", "pred": "The Deadly Assassin.", "em": 0, "loss": 9.647955894470215}
+{"question": "What was the climate of Gondwana at the beginning of the Devonian period?", "gold": "cooler", "pred": "Mild.", "em": 0, "loss": 7.590631008148193}
+{"question": "Which two areas saw a significant renewal after the post-war period and significantly modernised the city?", "gold": "CBD and St Kilda Road", "pred": "St Kilda Road and the CBD.", "em": 0, "loss": 5.035011291503906}
+{"question": "What age ranges does Finnish comprehensive school cover?", "gold": "7 to 16", "pred": "Grades 7 through 16.", "em": 0, "loss": 2.9274985790252686}
+{"question": "It is also argued that Napoleon III thought a war would resolve the growing issue of what?", "gold": "domestic political problems", "pred": "Domestic politics.", "em": 0, "loss": 4.876114845275879}
+{"question": "What did Feynman investigate while working on quantum gravity?", "gold": "consequences of a free massless spin 2 field", "pred": "Free massless spin 2 field", "em": 0, "loss": 3.2309553623199463}
+{"question": "What is a passing score on the US Air Force Fitness Test?", "gold": "75 points", "pred": "75 points.", "em": 0, "loss": 4.332539081573486}
+{"question": "The majority of contemporary Slavic populations who profess a religion are what?", "gold": "Orthodox", "pred": "Orthodox, followed by Catholic.", "em": 0, "loss": 4.921451568603516}
+{"question": "When did James I negotiate the Treaty of London?", "gold": "1604", "pred": "In 1604.", "em": 0, "loss": 3.398683786392212}
+{"question": "Portuguese pavement is known by what other name?", "gold": "Calçada Portuguesa", "pred": "Calçada Portuguesa\n\nThe question asks for another name for Portuguese pavement", "em": 0, "loss": 3.792541027069092}
+{"question": "An activist in the Arab spring said they were using Twitter to do what?", "gold": "coordinate", "pred": "Coordinate protests.", "em": 0, "loss": 12.387443542480469}
+{"question": "How does one become a Freemason?", "gold": "The onus is on candidates to ask to join", "pred": "Through meeting and being introduced by existing members, then undergoing an interview to assess suitability", "em": 0, "loss": 4.592126846313477}
+{"question": "When did scientists discover the hole in the ozone layer?", "gold": "1985", "pred": "1985\n\nThis question is asking for the year when scientists first", "em": 0, "loss": 3.3296141624450684}
+{"question": "What did Holmes do to stop the German Plane?", "gold": "ram it", "pred": "Rammed it.", "em": 0, "loss": 12.049606323242188}
+{"question": "What military base is located near the airport?", "gold": "Charleston Air Force Base", "pred": "Charleston Air Force Base.", "em": 0, "loss": 3.957630157470703}
+{"question": "Who did the organizations file the complaints with?", "gold": "Education and Justice Departments", "pred": "Federal agencies.", "em": 0, "loss": 7.478470802307129}
+{"question": "Where was the first screening of Spectre?", "gold": "Royal Albert Hall in London", "pred": "Royal Albert Hall in London", "em": 1, "loss": 3.510068416595459}
+{"question": "What war prevented Queen Victoria from taking her annual trip to France in 1900?", "gold": "Boer War", "pred": "The Boer War.", "em": 0, "loss": 5.135664939880371}
+{"question": "What is the rate of mortality for those with tuberculosis in Swaziland?", "gold": "18%", "pred": "18%.", "em": 0, "loss": 6.6479573249816895}
+{"question": "What was another requirement of foreign players?", "gold": "his country must have averaged at least 70th place in the official FIFA world rankings over the previous two years.", "pred": "The player must have played for their country in at least 75 percent of", "em": 0, "loss": 3.6159706115722656}
+{"question": "What is the driest country in sub-Saharan Africa?", "gold": "Namibia", "pred": "Namibia.", "em": 0, "loss": 5.621438980102539}
+{"question": "What three departments surrounding Paris had densities greater than 10k/k?", "gold": "Hauts-de-Seine, Seine-Saint-Denis and Val-de-Marne", "pred": "Hauts-de-Seine, Seine-Saint-Denis, Val-de-Mar", "em": 0, "loss": 1.6880576610565186}
+{"question": "What band's debut was titled Shake Your Money Maker?", "gold": "The Black Crowes", "pred": "The Black Crowes\nThe context mentions that The Black Crowes released their debut", "em": 0, "loss": 3.77786922454834}
+{"question": "What percentage of New Delhi's population is Hindu?", "gold": "79.8%", "pred": "79.8%", "em": 1, "loss": 3.685265064239502}
+{"question": "Why was there critcism of the elite clubs?", "gold": "due to their increasing ability to spend more than the other Premier League clubs.", "pred": "The criticism stems from the growing disparity in spending power among the Premier League clubs.", "em": 0, "loss": 4.157168865203857}
+{"question": "What downtown New Haven expressway spur intersects at exit 1 of 1-91?", "gold": "The Oak Street Connector", "pred": "The Oak Street Connector.", "em": 0, "loss": 7.774247169494629}
+{"question": "Which church was Father Edward Sorin representing?", "gold": "the Congregation of the Holy Cross", "pred": "The first church.", "em": 0, "loss": 7.459174633026123}
+{"question": "In hopes of not repeating another mistake, which show did PepsiCo sponsor?", "gold": "The X Factor", "pred": "The X Factor.", "em": 0, "loss": 6.7057318687438965}
+{"question": "What was the largest European city in 1667?", "gold": "Paris", "pred": "Paris.", "em": 0, "loss": 3.666411876678467}
+{"question": "What was ratified in 1773 in Prussia?", "gold": "The Polish Partition Sejm", "pred": "The Polish Partition Sejm ratified the cession on 30 September 1", "em": 0, "loss": 4.514292240142822}
+{"question": "In which centuries was the Age of Discovery?", "gold": "15th and 16th centuries", "pred": "The Age of Discovery occurred during the 15th and 16th", "em": 0, "loss": 1.8021814823150635}
+{"question": "What took a central roll for the emerging post-punk music?", "gold": "studio experimentation", "pred": "Studio experimentation.", "em": 0, "loss": 9.65277099609375}
+{"question": "What clubs have missed the competition?", "gold": "Manchester United did not enter the 1999–2000 FA Cup,", "pred": "Manchester United\n\nThis context highlights instances where top clubs like Manchester United have missed competitions", "em": 0, "loss": 5.462362766265869}
+{"question": "Where are 18th century \"leaving portraits\" kept at Eton?", "gold": "Parlour, Election Hall, and Election Chamber", "pred": "Parlour, Election Hall, and Election Chamber.", "em": 0, "loss": 4.916079521179199}
+{"question": "How many security guards died at the reserve?", "gold": "five", "pred": "Five", "em": 1, "loss": NaN}
+{"question": "NARA is responsible for what collection of archives?", "gold": "National Archives", "pred": "Government and historical records.", "em": 0, "loss": 4.669140338897705}
+{"question": "What mountains did the Australian battalions fight a rearguard action over on the Kokoda Track?", "gold": "Owen Stanley Ranges", "pred": "rugged Owen Stanley Ranges.", "em": 0, "loss": 7.466949939727783}
+{"question": "Why did Venezuelans come to America?", "gold": "Many Venezuelans settled in the United States with hopes of receiving a better education, only to remain in there following graduation.", "pred": "To receive a better education or earn a higher salary.", "em": 0, "loss": 4.545544624328613}
+{"question": "Which singer performed at Bell's funeral?", "gold": "Jean MacDonald", "pred": "Jean MacDonald sang a verse of Robert Louis Stevenson's \"Requiem\" at", "em": 0, "loss": 3.546321153640747}
+{"question": "What are the common languages spoken?", "gold": "Hindi, Pahari, Dogri, Mandeali Kangri, Mandyali, Gojri and Kinnauri", "pred": "Hindi, Pahari, Dogri, Mandeali Kangri, M", "em": 0, "loss": 3.0156075954437256}
+{"question": "Harper Lee has stated that To Kill a Mockingbird is not what genre of book?", "gold": "autobiography", "pred": "Fictionalized biography\n\nThe context indicates that Harper Lee wrote To Kill a Mock", "em": 0, "loss": 3.696998357772827}
+{"question": "What was Speedway Blvd called in the 1990s?", "gold": "\"Street of the Year\"", "pred": "Street of the Year\n\nThis question asks about the nickname or title that Speedway Boulevard", "em": 0, "loss": 4.393937110900879}
+{"question": "Where are loading jetties found on Norfolk Island?", "gold": "Kingston and Cascade", "pred": "Kingston and Cascade.", "em": 0, "loss": 7.350438594818115}
+{"question": "What was started by the Roman Catholic Church to dispense of the Cathars in Languedoc?", "gold": "The Cathar Crusade", "pred": "The Cathar Crusade was initiated by the Roman Catholic Church to eliminate the Cath", "em": 0, "loss": 2.4460039138793945}
+{"question": "When did Beyoncé become the highest paid black musician, ever?", "gold": "April 2014.", "pred": "In April 2014.", "em": 0, "loss": 2.645049571990967}
+{"question": "Each Brigade contains how many regiments?", "gold": "one", "pred": "Three regiments.", "em": 0, "loss": 6.121295928955078}
+{"question": "What DuPont factory is located in the Richmond area?", "gold": "Spruance Plant", "pred": "The Spruance Plant.", "em": 0, "loss": 7.849546909332275}
+{"question": "What term describes a small amount of element?", "gold": "quantum", "pred": "Quantum", "em": 1, "loss": 2.207864761352539}
+{"question": "What dialect is standard Russian based on?", "gold": "Moscow dialect", "pred": "Moscow dialect.", "em": 0, "loss": 6.482242107391357}
+{"question": "In what year was the Kingdom of Great Britain founded?", "gold": "1707", "pred": "1707\n\nThis question is asking about when the Kingdom of Great", "em": 0, "loss": 3.931973695755005}
+{"question": "What area was once the site of a significant pre-reformation movement, but now only has a small number of Protestants?", "gold": "Czech Republic", "pred": "The Czech Republic.", "em": 0, "loss": 6.610662460327148}
+{"question": "About how many people lived in the Marshall Islands in 1862?", "gold": "10,000", "pred": "Approximately 10,000 people.", "em": 0, "loss": 1.9962934255599976}
+{"question": "What percentage of the Rajasthani GDP comes from tourism?", "gold": "eight percent", "pred": "Eight percent.", "em": 0, "loss": 7.067533016204834}
+{"question": "How long after the natives were cured did it take for people to figure out the reason that brown rice cured them?", "gold": "two decades", "pred": "About two decades.", "em": 0, "loss": 6.469015598297119}
+{"question": "An erroneous understanding of a fact or situation may only invalidate a state's consent to a treaty if what is also true about the erroneous understanding?", "gold": "formed the \"essential basis\" of the state's consent", "pred": "The misunderstanding must form the essential basis of the state's consent.", "em": 0, "loss": 5.732797145843506}
+{"question": "What are some of the findings that support their argument?", "gold": "quantum mechanics and chaos theory.", "pred": "Quantum mechanics and chaos theory.", "em": 1, "loss": 3.131861925125122}
+{"question": "How many ways did the Vedantins have of gaining knowledge?", "gold": "five or six methods", "pred": "Five or six.", "em": 0, "loss": 4.399148464202881}
+{"question": "What is one example of antibiotics that may have a possible side effect of tendon damage?", "gold": "a quinolone antibiotic with a systemic corticosteroid", "pred": "Quinolones with systemic corticosteroids.", "em": 0, "loss": 3.290099620819092}
+{"question": "Who is the record holder for most trophy wins as coach of Barcelona?", "gold": "Josep Guardiola", "pred": "Josep Guardiola\n\nThis answer directly addresses the question by identifying Josep Guard", "em": 0, "loss": 3.3808343410491943}
+{"question": "Who recognized Catalan as a departmental language?", "gold": "General Council of the Pyrénées-Orientales", "pred": "The General Council of the Pyrénées-Orientales.", "em": 0, "loss": 2.970503807067871}
+{"question": "Zeus was married to which goddess?", "gold": "Hera", "pred": "Hera\n\nThis context provides information about the ancient Greek religion, specifically focusing on the", "em": 0, "loss": 3.5553648471832275}
+{"question": "Where is health care poor in China?", "gold": "inland areas", "pred": "Sichuan.", "em": 0, "loss": 5.792964935302734}
+{"question": "When did the reign of the last Western Roman Emperor end?", "gold": "476", "pred": "476 AD\n\nThe deposition of the last emperor of the West occurred", "em": 0, "loss": 4.081784725189209}
+{"question": "The platypus has sex chromosomes more related to which other non-mammal?", "gold": "chicken", "pred": "Chicken.", "em": 0, "loss": 4.697251319885254}
+{"question": "When did China create a seismic design code for building?", "gold": "1976", "pred": "After the devastating 1976 Tangshan earthquake.", "em": 0, "loss": 3.0785927772521973}
+{"question": "What was greater use of congregational judicial procedures used to enforce?", "gold": "a strict moral code", "pred": "Moral code\n\nThis question is asking about the increased use of congregational judicial procedures", "em": 0, "loss": 4.763649940490723}
+{"question": "What type of cells engulf or eat pathogens and foreign particles?", "gold": "phagocytes", "pred": "Phagocytes", "em": 1, "loss": 4.242884635925293}
+{"question": "What other trail besides walking trails does Pippy Park have?", "gold": "skiing", "pred": "Skiing trails.", "em": 0, "loss": 5.959961891174316}
+{"question": "What popular commentator left during the '04 season?", "gold": "Steve Stone", "pred": "Steve Stone\n\nThe context provided does not mention any specific commentator leaving during the '", "em": 0, "loss": 5.241068363189697}
+{"question": "What percentage of COINTELPRO resources were targeted at FBI labeled subversive groups?", "gold": "85%", "pred": "85%", "em": 1, "loss": 3.5574541091918945}
+{"question": "What needs to be avoided with civil disobedience?", "gold": "general disobedience", "pred": "Encouraging general disobedience which is neither conscientious nor of social benefit.", "em": 0, "loss": 4.513463020324707}
+{"question": "Who was the first known European to visit China and return?", "gold": "Marco Polo", "pred": "Marco Polo.", "em": 0, "loss": 6.027207374572754}
+{"question": "What was the name of Beyoncé's tour that she started on April 15?", "gold": "The Mrs. Carter Show World Tour", "pred": "The Mrs. Carter Show World Tour.", "em": 0, "loss": 5.896152019500732}
+{"question": "What was the 2011-12 GSDP estimate for Delhi?", "gold": "Rs 3.11 trillion", "pred": "Rs 3.11 trillion (short scale).", "em": 0, "loss": 4.170727729797363}
+{"question": "How much warning was Liberius given before his exile?", "gold": "three days", "pred": "Three days.", "em": 0, "loss": 6.422366619110107}
