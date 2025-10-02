@@ -6,3 +6,6 @@ huggingface/
 *.safetensors
 *.bin
 *.pt
+venv/
+env/
+.DS_Store
