@@ -1,0 +1,1 @@
+{"seed": 42, "train_n": 2000, "test_pool_n": 800, "sample_pool_n": 500, "val_n": 300, "dataset": "rajpurkar/squad", "note": "Use zero-shot prompts and temperature=0.5 for generation later."}
