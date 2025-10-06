@@ -1,55 +1,71 @@
-"""
-Prompt templates for all baselines and HaMI model.
-Each function returns a formatted string prompt.
-"""
+def build_eval_prompt(question: str, answers: list[str]) -> str:
+    """
+    Build an evaluation prompt for LLM-based scoring baselines.
+    Used in HaMI, HaMI*, and Semantic Entropy baselines.
 
-def get_generation_prompt(question: str) -> str:
-    """Prompt used in multi_sample.py"""
-    return f"Answer the question: {question}"
+    Args:
+        question: str — input question text
+        answers: list[str] — list of candidate answers (e.g., [A1, A2])
 
-def get_fact_check_prompt(question: str, gold: str, generation: str) -> str:
-    """Prompt used in refined_set.py (GPT-4 factuality judgment)"""
-    return f"""
-You are a factual accuracy evaluator.
+    Returns:
+        A formatted string prompt to feed into the model.
+    """
+    if not answers:
+        raise ValueError("answers list cannot be empty")
 
-Question: {question}
-Reference Answer: {gold}
-Model Answer: {generation}
+    parts = [f"Answer {i+1}: {ans.strip()}" for i, ans in enumerate(answers)]
+    answers_block = "\n\n".join(parts)
 
-Is the model answer factually correct? 
-Reply strictly with:
-1 — if correct,
-0 — if hallucinated or incorrect.
-"""
+    prompt = (
+        f"Question: {question.strip()}\n\n"
+        f"{answers_block}\n\n"
+        "Which answer is more correct or informative? "
+        "Please reply with the index (1, 2, etc.) or the answer text."
+    )
 
-def get_true_false_prompt(question: str, generation: str) -> str:
-    """Prompt used in p_true.py baseline"""
-    return f"""
-Question: {question}
-Answer: {generation}
-Is this answer factually correct? True or False?
-"""
+    return prompt
 
-def get_yes_no_prompt(question: str, gold: str, generation: str) -> str:
-    """Prompt used in SAPLMA baseline"""
-    return f"""
-You are an expert fact checker.
 
-Question: {question}
-Candidate Answer: {generation}
-Reference Answer: {gold}
+def build_generation_prompt(question: str) -> str:
+    """
+    Build a prompt for open-ended generation tasks (used in multi-sample.py).
+    """
+    return (
+        f"Answer the following question concisely and factually.\n\n"
+        f"Question: {question.strip()}\n\n"
+        f"Answer:"
+    )
 
-Is the candidate answer factually correct? Reply strictly with "Yes" or "No".
-"""
 
-def get_hami_instruction(question: str, generation: str, label: int) -> str:
-    """Prompt template for HaMI model training"""
-    correctness = "factual" if label == 1 else "hallucinated"
-    return f"""
-Instruction: Classify whether the following answer is factual or hallucinated.
+def build_hami_prompt(question: str, pos: str, neg: str) -> str:
+    """
+    Build the comparison prompt used in HaMI baseline.
+    """
+    return (
+        f"Question: {question.strip()}\n\n"
+        f"Answer A: {pos.strip()}\n"
+        f"Answer B: {neg.strip()}\n\n"
+        "Which answer is better? Reply with 'A' or 'B'."
+    )
 
-Question: {question}
-Answer: {generation}
 
-The answer is {correctness}.
-"""
+def build_hami_star_prompt(question: str, pos: str, neg: str) -> str:
+    """
+    Build the comparison prompt used in Enhanced HaMI (HaMI*).
+    """
+    return (
+        f"[Enhanced Evaluation]\n"
+        f"Assess which of the following answers is more accurate and informative.\n\n"
+        f"Question: {question.strip()}\n\n"
+        f"Answer 1: {pos.strip()}\n"
+        f"Answer 2: {neg.strip()}\n\n"
+        "Your choice: (1/2)"
+    )
+
+
+__all__ = [
+    "build_eval_prompt",
+    "build_generation_prompt",
+    "build_hami_prompt",
+    "build_hami_star_prompt",
+]
