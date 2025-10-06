@@ -1,4 +1,3 @@
-# baseline/uncertainty_based/p_true.py
 import os
 import json
 import torch

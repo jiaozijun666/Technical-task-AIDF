@@ -1,4 +1,3 @@
-# src/prompt.py
 """
 Prompt templates for all baselines and HaMI model.
 Each function returns a formatted string prompt.

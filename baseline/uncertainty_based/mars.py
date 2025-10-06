@@ -1,4 +1,3 @@
-# baseline/uncertainty_based/mars.py
 import os
 import json
 import numpy as np
@@ -20,11 +19,10 @@ def compute_mars(data_path, output_path="results/mars.jsonl", model_name="all-Mi
         if len(gens) < 2:
             continue
 
-        # 向量化生成
         embeddings = model.encode(gens, normalize_embeddings=True)
         sim_matrix = np.dot(embeddings, embeddings.T)
-        np.fill_diagonal(sim_matrix, 0)  # 去掉自身相似度
-        mars_score = float(np.mean(sim_matrix))  # 平均两两相似度
+        np.fill_diagonal(sim_matrix, 0) 
+        mars_score = float(np.mean(sim_matrix))  
 
         results.append({
             "question": item["question"],

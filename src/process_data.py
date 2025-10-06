@@ -1,4 +1,3 @@
-# src/process_data.py
 from datasets import load_dataset
 import json, os
 
@@ -17,10 +16,9 @@ if __name__ == "__main__":
 
     os.makedirs("data", exist_ok=True)
 
-    # ✅ 转为 list[dict] 再保存
     with open("data/squad_train.json", "w") as f:
         json.dump(train.to_list(), f, indent=2)
     with open("data/squad_test.json", "w") as f:
         json.dump(test.to_list(), f, indent=2)
 
-    print("[✔] Saved data/squad_train.json and data/squad_test.json")
+   

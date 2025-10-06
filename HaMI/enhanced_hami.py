@@ -1,5 +1,3 @@
-# HaMI/enhanced_hami.py
-
 import os
 import json
 import numpy as np

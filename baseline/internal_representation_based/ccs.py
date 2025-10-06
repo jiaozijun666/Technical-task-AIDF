@@ -1,4 +1,3 @@
-# baseline/internal_representation_based/ccs.py
 import os
 import json
 import torch

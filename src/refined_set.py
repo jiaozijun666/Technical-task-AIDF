@@ -1,9 +1,7 @@
-# src/refined_set.py
-import os
 import json
 import openai
 from tqdm import tqdm
-from prompt import get_fact_check_prompt  # ✅ 统一调用
+from prompt import get_fact_check_prompt
 
 def gpt4_judge(question, gold, generation):
     prompt = get_fact_check_prompt(question, gold, generation)
@@ -16,7 +14,7 @@ def gpt4_judge(question, gold, generation):
         content = response["choices"][0]["message"]["content"].strip()
         return 1 if content.startswith("1") else 0
     except Exception as e:
-        print(f"⚠️ GPT-4 API error: {e}")
+        print(f"GPT-4 API error: {e}")
         return -1
 
 def refine_dataset(input_path="data/squad_final.json", output_path="data/squad_refined.json"):
@@ -36,4 +34,4 @@ def refine_dataset(input_path="data/squad_final.json", output_path="data/squad_r
 
     with open(output_path, "w") as f:
         json.dump(refined, f, indent=2)
-    print(f"[✔] Saved {len(refined)} labeled samples to {output_path}")
+    print(f"Saved {len(refined)} labeled samples to {output_path}")

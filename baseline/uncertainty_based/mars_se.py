@@ -1,4 +1,3 @@
-# baseline/uncertainty_based/mars_se.py
 import os
 import json
 import numpy as np
@@ -24,12 +23,12 @@ def compute_mars_se(data_path, output_path="results/mars_se.jsonl", model_name="
         sim_matrix = np.dot(embeddings, embeddings.T)
         np.fill_diagonal(sim_matrix, 0)
 
-        # 计算每个样本的平均相似度
+       
         avg_sim = sim_matrix.mean(axis=1)
-        # 归一化后计算熵权重
+        
         p = avg_sim / (np.sum(avg_sim) + 1e-8)
-        entropy = -np.sum(p * np.log(p + 1e-8))  # Shannon entropy
-        entropy_weight = 1 / (1 + entropy)       # 熵越大，不确定性越高 → 权重越小
+        entropy = -np.sum(p * np.log(p + 1e-8))  
+        entropy_weight = 1 / (1 + entropy)       
 
         mars_se_score = float(np.mean(avg_sim) * entropy_weight)
         results.append({

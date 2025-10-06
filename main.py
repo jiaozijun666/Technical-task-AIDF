@@ -60,9 +60,6 @@ def evaluate_predictions(pred_path, gold_path="data/squad_refined.json"):
     }
 
 
-# ============================================================
-# Main pipeline
-# ============================================================
 def main():
     os.makedirs(RESULT_DIR, exist_ok=True)
     data_path = "data/squad_refined.json"
@@ -70,7 +67,6 @@ def main():
 
     print("Running all baselines and HaMI variants...\n")
 
-    # === Step 1: Run all baselines ===
     compute_perplexity(model_name, data_path, f"{RESULT_DIR}/perplexity.jsonl")
     compute_semantic_entropy(data_path, f"{RESULT_DIR}/semantic_entropy.jsonl")
     compute_mars(data_path, f"{RESULT_DIR}/mars.jsonl")
@@ -81,13 +77,13 @@ def main():
     compute_ccs(model_name, data_path, f"{RESULT_DIR}/ccs.jsonl")
     compute_saplma(model_name, data_path, f"{RESULT_DIR}/saplma.jsonl")
 
-    # === Step 2: Run HaMI (basic) ===
+   
     train_and_evaluate_hami(data_path, model_name, f"{RESULT_DIR}/hami.jsonl")
 
-    # === Step 3: Run Enhanced HaMI (HaMI*) ===
+ 
     train_enhanced_hami(data_path, f"{RESULT_DIR}/enhanced_hami.jsonl")
 
-    # === Step 4: Evaluate and summarize ===
+    
     baselines = [
         "perplexity",
         "semantic_entropy",

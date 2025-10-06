@@ -1,4 +1,3 @@
-# baseline/uncertainty_based/semantic_entropy.py
 import os
 import json
 import numpy as np
@@ -20,11 +19,10 @@ def compute_semantic_entropy(data_path, output_path="results/semantic_entropy.js
         if len(gens) < 2:
             continue
 
-        # 计算句向量并归一化
         embeddings = model.encode(gens, normalize_embeddings=True)
-        # 计算两两余弦相似度矩阵
+        
         sim = np.dot(embeddings, embeddings.T)
-        # 取上三角平均相似度
+        
         avg_sim = np.mean(sim[np.triu_indices_from(sim, k=1)])
         sem_entropy = float(1 - avg_sim)
 

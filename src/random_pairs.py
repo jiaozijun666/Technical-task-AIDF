@@ -1,4 +1,3 @@
-# src/random_pairs.py
 import os
 import json
 import random
@@ -18,7 +17,7 @@ def create_random_pairs(input_path="data/squad_final.json",
     with open(input_path, "r") as f:
         data = json.load(f)
 
-    # 取出所有正确答案
+
     all_answers = [item["gold"] for item in data]
     n = len(data)
     results = []
@@ -26,7 +25,7 @@ def create_random_pairs(input_path="data/squad_final.json",
     print(f"Generating {n} random mismatched QA pairs...")
     for item in tqdm(data):
         q = item["question"]
-        # 随机抽取不同问题的答案
+
         wrong = item["gold"]
         while wrong == item["gold"]:
             wrong = random.choice(all_answers)

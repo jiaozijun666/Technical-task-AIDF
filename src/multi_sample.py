@@ -1,5 +1,3 @@
-# src/multi_sample.py
-
 import os
 import json
 from tqdm import tqdm

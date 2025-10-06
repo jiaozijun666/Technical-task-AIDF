@@ -1,4 +1,3 @@
-# baseline/internal_representation_based/haloscope.py
 import os
 import json
 import numpy as np
@@ -27,9 +26,9 @@ def compute_haloscope(data_path, output_path="results/haloscope.jsonl", model_na
         ref_emb = encoder.encode(gold, normalize_embeddings=True)
 
         for g in gens:
-            prompt = get_generation_prompt(q)  # 用统一生成风格
+            prompt = get_generation_prompt(q)  
             gen_emb = encoder.encode(g, normalize_embeddings=True)
-            score = float(np.dot(ref_emb, gen_emb))  # 余弦相似度
+            score = float(np.dot(ref_emb, gen_emb))  
             results.append({
                 "question": q,
                 "gold": gold,
