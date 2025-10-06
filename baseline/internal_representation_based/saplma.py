@@ -4,7 +4,7 @@ import json
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from prompt import get_yes_no_prompt  # ✅ 统一调用
+from src.prompt import get_yes_no_prompt
 
 def compute_saplma(model_name, data_path, output_path="results/saplma.jsonl"):
     tokenizer = AutoTokenizer.from_pretrained(model_name)

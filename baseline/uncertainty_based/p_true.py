@@ -4,7 +4,7 @@ import json
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from prompt import get_true_false_prompt  # ✅ 统一调用
+from src.prompt import get_true_false_prompt  
 
 def compute_p_true(model_name, data_path, output_path="results/p_true.jsonl"):
     tokenizer = AutoTokenizer.from_pretrained(model_name)

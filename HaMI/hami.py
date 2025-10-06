@@ -3,7 +3,7 @@ import json
 import torch
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from prompt import get_hami_instruction  # ✅ 统一 prompt
+from src.prompt import get_hami_instruction
 
 def train_and_evaluate_hami(data_path="data/squad_refined.json",
                             model_name="meta-llama/Llama-3.1-8B-Instruct",

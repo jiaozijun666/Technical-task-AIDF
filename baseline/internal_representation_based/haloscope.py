@@ -4,7 +4,7 @@ import json
 import numpy as np
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
-from prompt import get_generation_prompt  # 可统一调用 prompt（保持一致性）
+from src.prompt import get_generation_prompt 
 
 def compute_haloscope(data_path, output_path="results/haloscope.jsonl", model_name="all-MiniLM-L6-v2"):
     """
