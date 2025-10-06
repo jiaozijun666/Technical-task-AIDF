@@ -1,20 +1,8 @@
-# ===== Core NLP stack =====
+torch==2.6.0
 transformers==4.51.3
-tokenizers==0.21.4
-safetensors==0.4.5
-
-# ===== Data & training helpers =====
-datasets>=4.1.1
-accelerate==0.33.0
-sentencepiece==0.2.0
-scikit-learn==1.5.2
-numpy==1.26.4
-pandas==2.2.2
-tqdm==4.66.4
-huggingface-hub>=0.30.0,<1.0
-
-
-protobuf==5.29.1
-typing-extensions>=4.8.0
-requests==2.32.3
-
+sentence-transformers==2.2.2
+datasets
+scikit-learn
+tqdm
+numpy
+openai

@@ -10,3 +10,5 @@ huggingface/
 venv/
 env/
 .DS_Store
+src/secrets_local.py
+.env

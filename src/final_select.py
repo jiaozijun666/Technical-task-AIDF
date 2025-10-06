@@ -1,133 +1,54 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-final_select.py
-
-Refine the 500-question sample pool (with K generated answers each) into the
-final ~400-question test set, following a simple, transparent rule:
-
-  Keep a question if at least ceil(min_valid_ratio * k) of its K samples are "valid".
-  A sample is "valid" if it is non-empty and <= max_words tokens (whitespace-split).
-
-If kept > need, downsample to exactly `need` after shuffling with a fixed seed.
-If kept < need, keep all (final size < need).
-
-Inputs:
-  results/test500_samples.jsonl
-    Each line: {"question": str, "gold": str, "samples": [str, ...]}
-
-Outputs:
-  data/test_final_400.jsonl
-    Each line: {"question": str, "context": "", "gold": str}
-
-Usage:
-  python -m src.final_select \
-    --samples results/test500_samples.jsonl \
-    --out data/test_final_400.jsonl \
-    --need 400 --k 6 --min_valid_ratio 0.67 --max_words 80 --seed 42
-"""
-
-import argparse
-import json
-import math
+# src/final_select.py
 import os
+import json
 import random
-import re
-from typing import List, Dict
 
+def load_multi_sample(path="data/squad_multi.json"):
+    """加载 multi_sample 生成的结果"""
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{path} not found. Run multi_sample.py first.")
+    with open(path, "r") as f:
+        data = json.load(f)
+    return data
 
-def load_jsonl(path: str) -> List[Dict]:
-    rows = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                rows.append(json.loads(line))
-    return rows
+def filter_generations(generations, min_len=10):
+    """过滤低质量回答"""
+    filtered = []
+    for g in generations:
+        text = g.strip()
+        if len(text) < min_len:           # 太短
+            continue
+        if any(x in text.lower() for x in ["sorry", "as an ai", "language model"]):
+            continue
+        filtered.append(text)
+    return filtered
 
+def select_high_quality(data, sample_size=500, retain_size=400, seed=42, output_path="data/squad_final.json"):
+    """随机抽样并筛选"""
+    random.seed(seed)
+    sampled = random.sample(data, min(sample_size, len(data)))
+    final_data = []
 
-def save_jsonl(path: str, rows: List[Dict]) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        for r in rows:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    for item in sampled:
+        gens = filter_generations(item["generations"])
+        if len(gens) == 0:
+            continue
+        final_data.append({
+            "question": item["question"],
+            "gold": item["gold"],
+            "generations": gens
+        })
 
+    # 如果筛完后还多于 retain_size，随机取 retain_size 条
+    if len(final_data) > retain_size:
+        final_data = random.sample(final_data, retain_size)
 
-def normalize(s: str) -> str:
-    s = s.strip().lower()
-    s = re.sub(r"\s+", " ", s)
-    return s
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(final_data, f, indent=2)
 
-
-def word_count(s: str) -> int:
-    return len(s.split())
-
-
-def is_valid_answer(ans: str, max_words: int) -> bool:
-    if not ans or not ans.strip():
-        return False
-    if word_count(ans) > max_words:
-        return False
-    # Optional light filters to avoid boilerplate junk; extend as needed.
-    junk_patterns = [
-        r"as an ai language model",
-        r"i cannot|i'm unable",
-        r"no context provided",
-    ]
-    norm = normalize(ans)
-    if any(re.search(pat, norm) for pat in junk_patterns):
-        return False
-    return True
-
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--samples", type=str, default="results/test500_samples.jsonl",
-                    help="JSONL with K samples per question.")
-    ap.add_argument("--out", type=str, default="data/test_final_400.jsonl",
-                    help="Output JSONL final test set.")
-    ap.add_argument("--need", type=int, default=400, help="Target final size.")
-    ap.add_argument("--k", type=int, default=6, help="Expected number of samples per question.")
-    ap.add_argument("--min_valid_ratio", type=float, default=0.67,
-                    help="Minimum fraction of valid samples required (e.g., 0.67 -> >=4/6).")
-    ap.add_argument("--max_words", type=int, default=80,
-                    help="Max words allowed for a sample to be considered valid.")
-    ap.add_argument("--seed", type=int, default=42, help="Random seed for downsampling.")
-    args = ap.parse_args()
-
-    random.seed(args.seed)
-    rows = load_jsonl(args.samples)
-    keep_threshold = max(1, math.ceil(args.min_valid_ratio * args.k))
-
-    kept = []
-    total_valid_counts = []
-
-    for ex in rows:
-        q = ex.get("question", "")
-        gold = ex.get("gold", "")
-        samples: List[str] = ex.get("samples", []) or []
-
-        # If file has variable K, adaptively use min(len(samples), args.k) for threshold calc
-        k_here = min(len(samples), args.k) if len(samples) > 0 else args.k
-        need_valid_here = max(1, math.ceil(args.min_valid_ratio * k_here))
-
-        valid_cnt = sum(1 for s in samples[:k_here] if is_valid_answer(s, args.max_words))
-        total_valid_counts.append(valid_cnt)
-
-        if valid_cnt >= need_valid_here:
-            kept.append({"question": q, "context": "", "gold": gold})
-
-    print(f"[final_select] total={len(rows)}, kept_before_downsample={len(kept)} "
-          f"(need_valid >= {keep_threshold} with k={args.k}, max_words={args.max_words})")
-
-    # If too many, downsample to need
-    if len(kept) > args.need:
-        random.shuffle(kept)
-        kept = kept[:args.need]
-
-    print(f"[final_select] final_size={len(kept)} -> {args.out}")
-    save_jsonl(args.out, kept)
-
+    print(f"[✔] Selected {len(final_data)} clean samples saved to {output_path}")
 
 if __name__ == "__main__":
-    main()
+    data = load_multi_sample("data/squad_multi.json")  # 或改为 squad_multi_debug.json
+    select_high_quality(data)
