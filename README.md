@@ -66,25 +66,33 @@ Technical-task-AIDF/
 └── README.md                                 # Project documentation
 ```
 ### Detailed process as follows:
+Clone the repository to Google Colab
 ```{python}
 !git clone https://github.com/jiaozijun666/Technical-task-AIDF.git
 %cd Technical-task-AIDF
 ```
+Downloading the necessary packages
 ```{python}
 !pip install -r requirements.txt
 !pip install bitsandbytes accelerate transformers datasets
 ```
-Login the hugging face hub for API.
+Login the hugging face hub for model API(need HF tokens)
 ```{python}
 from huggingface_hub import login
 login()
 ```
+Make sure you can run the files successfully
 ```{python}
 import os, sys
 sys.path.append('/content/Technical-task-AIDF/src')
 os.chdir('/content/Technical-task-AIDF')
 ```
+Running the piplines in following order
 ```{python}
 !python src/process_data.py
 !python src/multi_sample.py
+!python src/final_select.py
+!python src/random_pairs.py
+!python src/refined_set.py
+!python main.py  
 ```
