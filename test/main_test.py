@@ -22,18 +22,18 @@ def evaluate_hami_metrics(path):
 
     metrics = {}
 
-    # === 1. Perplexity baseline ===
+   
     if "perplexity" in results:
         data = results["perplexity"]
         n = len(data)
-        y_true = [i % 2 for i in range(n)]  # 临时制造 0/1 标签
+        y_true = [i % 2 for i in range(n)]
         y_score = []
         for r in data:
             score = 1.0 / (1.0 + np.exp(r["p_false"] - r["p_true"]))
             y_score.append(score)
         metrics["Perplexity"] = compute_metrics(y_true, y_score)
 
-    # === 2. Semantic Entropy baseline ===
+    
     if "semantic_entropy" in results:
         data = results["semantic_entropy"]
         n = len(data)
@@ -41,7 +41,7 @@ def evaluate_hami_metrics(path):
         y_score = [abs(r["entropy"]) for r in data]
         metrics["Semantic Entropy"] = compute_metrics(y_true, y_score)
 
-    # === 3. HaMI baseline ===
+    
     if "hami" in results:
         data = results["hami"]
         n = len(data)
@@ -49,7 +49,7 @@ def evaluate_hami_metrics(path):
         y_score = [1.0 if r.get("pred","").lower() not in ["unknown","idk","none"] else 0.0 for r in data]
         metrics["HaMI"] = compute_metrics(y_true, y_score)
 
-    # === 4. HaMI* enhanced ===
+    
     if "hami_star" in results:
         data = results["hami_star"]
         n = len(data)
@@ -62,7 +62,7 @@ def evaluate_hami_metrics(path):
 
 
 def main():
-    print("=== HaMI Reproduction: 5 Baselines Evaluation ===\n")
+    print("HaMI Reproduction: 5 Baselines Evaluation")
 
     metrics = evaluate_hami_metrics(RESULTS_PATH)
     os.makedirs(os.path.dirname(SUMMARY_PATH), exist_ok=True)
@@ -73,7 +73,7 @@ def main():
     for name, vals in metrics.items():
         print(f"{name:18s} | AUROC: {vals['AUROC']:.4f} | Acc: {vals['Accuracy']:.4f} | F1: {vals['F1']:.4f}")
 
-    print(f"\n✅ All metrics saved to {SUMMARY_PATH}")
+    print(f"All metrics saved to {SUMMARY_PATH}")
 
 if __name__ == "__main__":
     main()

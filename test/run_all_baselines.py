@@ -22,7 +22,7 @@ def run_all_baselines():
 
     results = {}
 
-    # --- Uncertainty-based baselines ---
+    
     print("p(True) baseline ...")
     results["p_true"] = compute_p_true(DATA_PATH)
 
@@ -38,7 +38,7 @@ def run_all_baselines():
     print("MARS-SE baseline ...")
     results["mars_se"] = compute_mars_se(DATA_PATH)
 
-    # --- Internal representation-based baselines ---
+    
     print("CCS baseline ...")
     results["ccs"] = compute_ccs(DATA_PATH)
 
@@ -48,14 +48,14 @@ def run_all_baselines():
     print("HaloScope baseline ...")
     results["haloscope"] = compute_haloscope(DATA_PATH)
 
-    # --- HaMI methods ---
+   
     print("HaMI baseline ...")
     results["hami"] = train_and_evaluate_hami(DATA_PATH)
 
     print("HaMI* (enhanced) baseline ...")
     results["hami_star"] = train_enhanced_hami(DATA_PATH)
 
-    # save all outputs
+    
     with open(OUTPUT_PATH, "w") as f:
         json.dump(results, f, indent=2)
 

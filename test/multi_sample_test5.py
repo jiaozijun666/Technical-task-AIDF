@@ -2,8 +2,8 @@ import os
 import json
 from tqdm import tqdm
 from typing import List
-from src.model import get_model, GenConfig
-from src.prompt import get_generation_prompt
+from model import get_model, GenConfig
+from prompt import build_generation_prompt
 
 
 def load_data(path: str) -> List[dict]:
@@ -37,7 +37,7 @@ def generate_multiple_answers(data: List[dict]):
         generations = []
 
         for i in range(n_samples):
-            prompt = get_generation_prompt(question)
+            prompt = build_generation_prompt(question)
             out = model.generate(prompt, cfg)
             generations.append(out.text)
 
