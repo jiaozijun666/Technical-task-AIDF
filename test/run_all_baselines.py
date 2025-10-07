@@ -1,6 +1,5 @@
 import os
 import json
-from src.data import load_json
 from baseline.uncertainty_based.p_true import compute_p_true
 from baseline.uncertainty_based.perplexity import compute_perplexity
 from baseline.uncertainty_based.semantic_entropy import compute_semantic_entropy
