@@ -1,16 +1,16 @@
 import os
 import json
 from src.data import load_json
-from baseline.uncertainty_based.p_true import compute_ptrue
+from baseline.uncertainty_based.p_true import compute_p_true
 from baseline.uncertainty_based.perplexity import compute_perplexity
 from baseline.uncertainty_based.semantic_entropy import compute_semantic_entropy
 from baseline.uncertainty_based.mars import compute_mars
 from baseline.uncertainty_based.mars_se import compute_mars_se
 from baseline.internal_representation_based.ccs import compute_ccs
-from baseline.internal_representation_based.saplpma import compute_saplma
+from baseline.internal_representation_based.saplma import compute_saplma
 from baseline.internal_representation_based.haloscope import compute_haloscope
-from HaMI.hami import run_hami
-from HaMI.enhanced_hami import run_hami_star
+from HaMI.hami import train_and_evaluate_hami
+from HaMI.enhanced_hami import train_enhanced_hami
 
 RESULT_DIR = "results"
 os.makedirs(RESULT_DIR, exist_ok=True)
@@ -25,7 +25,7 @@ def run_all_baselines():
 
     # --- Uncertainty-based baselines ---
     print("p(True) baseline ...")
-    results["p_true"] = compute_ptrue(DATA_PATH)
+    results["p_true"] = compute_p_true(DATA_PATH)
 
     print("Perplexity baseline ...")
     results["perplexity"] = compute_perplexity(DATA_PATH)
@@ -51,10 +51,10 @@ def run_all_baselines():
 
     # --- HaMI methods ---
     print("HaMI baseline ...")
-    results["hami"] = run_hami(DATA_PATH)
+    results["hami"] = train_and_evaluate_hami(DATA_PATH)
 
     print("HaMI* (enhanced) baseline ...")
-    results["hami_star"] = run_hami_star(DATA_PATH)
+    results["hami_star"] = train_enhanced_hami(DATA_PATH)
 
     # save all outputs
     with open(OUTPUT_PATH, "w") as f:
