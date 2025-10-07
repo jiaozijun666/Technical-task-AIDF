@@ -1,7 +1,7 @@
 # Technical-task-AIDF
 Pre-project Task - Hallucination Detection
 
-All script runs on google colab with model meta-llama/Llama-3.2-1B-Instruct for test and model meta-llama/Llama-3.1-8B-Instruct for whole.
+All script runs on google colab or kaggle notebook with model meta-llama/Llama-3.2-1B-Instruct for test and model meta-llama/Llama-3.1-8B-Instruct for whole.
 
 ### Repository Structure
 ```
