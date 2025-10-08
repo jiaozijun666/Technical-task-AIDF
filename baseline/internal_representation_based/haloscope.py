@@ -1,44 +1,34 @@
-import os
-import json
 import numpy as np
-from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
-from src.prompt import get_generation_prompt 
+from sentence_transformers import SentenceTransformer, util
 
-def compute_haloscope(data_path, output_path="results/haloscope.jsonl", model_name="all-MiniLM-L6-v2"):
+def evaluate(model, dataset):
     """
-    HALOSCOPE baseline:
-    Measures cosine similarity between generation and gold answer embeddings.
+    Baseline: HaloScope
+    Measures representation robustness through embedding variance.
     """
-    os.makedirs("results", exist_ok=True)
-    data = json.load(open(data_path))
-    encoder = SentenceTransformer(model_name)
-
+    embedder = SentenceTransformer('all-MiniLM-L6-v2')
     results = []
-    for item in tqdm(data, desc="Computing HALOSCOPE"):
-        q = item["question"]
-        gold = item.get("gold", "")
-        gens = item.get("generations", [])
-        if not gens or not gold:
+
+    for item in dataset:
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
+
+        if not pos or not neg:
             continue
 
-        # Reference embedding
-        ref_emb = encoder.encode(gold, normalize_embeddings=True)
+        q_emb = embedder.encode(q, convert_to_tensor=True)
+        pos_emb = embedder.encode(pos, convert_to_tensor=True)
+        neg_emb = embedder.encode(neg, convert_to_tensor=True)
 
-        for g in gens:
-            prompt = get_generation_prompt(q)  
-            gen_emb = encoder.encode(g, normalize_embeddings=True)
-            score = float(np.dot(ref_emb, gen_emb))  
-            results.append({
-                "question": q,
-                "gold": gold,
-                "generation": g,
-                "score": score
-            })
+        # HaloScope: measure difference in normed representations
+        var_true = float(np.linalg.norm(q_emb - pos_emb))
+        var_false = float(np.linalg.norm(q_emb - neg_emb))
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
+        score_true = -var_true
+        score_false = -var_false
 
-    print(f"[✔] Saved HALOSCOPE results to {output_path}")
+        results.append({"label": 1, "score": score_true})
+        results.append({"label": 0, "score": score_false})
+
     return results
