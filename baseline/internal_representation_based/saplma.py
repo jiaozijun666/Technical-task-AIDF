@@ -1,36 +1,31 @@
-import os
-import json
-import torch
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from src.prompt import get_yes_no_prompt
+import numpy as np
+from sentence_transformers import SentenceTransformer, util
 
-def compute_saplma(model_name, data_path, output_path="results/saplma.jsonl"):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
-    model.eval()
-
-    data = json.load(open(data_path))
-    os.makedirs("results", exist_ok=True)
+def evaluate(model, dataset):
+    """
+    Baseline: SAPLMA
+    Computes self-attentive pooled latent matching alignment between embeddings.
+    """
+    embedder = SentenceTransformer('all-MiniLM-L6-v2')
     results = []
 
-    for item in tqdm(data, desc="Computing SAPLMA"):
-        q, gold = item["question"], item["gold"]
-        for g in item["generations"]:
-            prompt = get_yes_no_prompt(q, gold, g)
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-            with torch.no_grad():
-                outputs = model.generate(**inputs, max_new_tokens=30)
-            text = tokenizer.decode(outputs[0], skip_special_tokens=True).lower()
-            score = 1.0 if "yes" in text else 0.0
-            results.append({
-                "question": q,
-                "generation": g,
-                "score": score
-            })
+    for item in dataset:
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
-    print(f"[✔] Saved SAPLMA results to {output_path}")
+        if not pos or not neg:
+            continue
+
+        q_emb = embedder.encode(q, convert_to_tensor=True)
+        pos_emb = embedder.encode(pos, convert_to_tensor=True)
+        neg_emb = embedder.encode(neg, convert_to_tensor=True)
+
+        # Use normalized dot product as alignment
+        score_true = float(util.dot_score(q_emb, pos_emb))
+        score_false = float(util.dot_score(q_emb, neg_emb))
+
+        results.append({"label": 1, "score": score_true})
+        results.append({"label": 0, "score": score_false})
+
     return results
