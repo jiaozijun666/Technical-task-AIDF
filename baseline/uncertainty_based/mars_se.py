@@ -1,44 +1,31 @@
-import os
-import json
 import numpy as np
-from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, util
 
-def compute_mars_se(data_path, output_path="results/mars_se.jsonl", model_name="all-MiniLM-L6-v2"):
+def evaluate(model, dataset):
     """
-    MARS-SE: Mean Agreement of Response Similarity with Entropy weighting.
-    Adds Shannon entropy weighting to MARS for more stable uncertainty estimates.
+    Baseline: MARS-SE
+    Extends MARS by computing similarity entropy over multiple samples.
     """
-    os.makedirs("results", exist_ok=True)
-    data = json.load(open(data_path))
-    model = SentenceTransformer(model_name)
-
+    embedder = SentenceTransformer('all-MiniLM-L6-v2')
     results = []
-    for item in tqdm(data, desc="Computing MARS-SE"):
-        gens = item.get("generations", [])
-        if len(gens) < 2:
+
+    for item in dataset:
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
+
+        if not pos or not neg:
             continue
 
-        embeddings = model.encode(gens, normalize_embeddings=True)
-        sim_matrix = np.dot(embeddings, embeddings.T)
-        np.fill_diagonal(sim_matrix, 0)
+        q_emb = embedder.encode(q, convert_to_tensor=True)
+        pos_emb = embedder.encode(pos, convert_to_tensor=True)
+        neg_emb = embedder.encode(neg, convert_to_tensor=True)
 
-       
-        avg_sim = sim_matrix.mean(axis=1)
-        
-        p = avg_sim / (np.sum(avg_sim) + 1e-8)
-        entropy = -np.sum(p * np.log(p + 1e-8))  
-        entropy_weight = 1 / (1 + entropy)       
+        sim_pos = float(util.cos_sim(q_emb, pos_emb))
+        sim_neg = float(util.cos_sim(q_emb, neg_emb))
 
-        mars_se_score = float(np.mean(avg_sim) * entropy_weight)
-        results.append({
-            "question": item["question"],
-            "score": mars_se_score
-        })
+        entropy = abs(sim_pos - sim_neg)
+        results.append({"label": 1, "score": sim_pos - entropy})
+        results.append({"label": 0, "score": sim_neg - entropy})
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
-
-    print(f"[✔] Saved MARS-SE results to {output_path}")
     return results
