@@ -1,53 +1,30 @@
-import os
-import json
-import torch
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM
+import numpy as np
+from sentence_transformers import SentenceTransformer, util
 
-def compute_ccs(model_name, data_path, output_path="results/ccs.jsonl"):
+def evaluate(model, dataset):
     """
-    Contrastive Confidence Scoring (CCS)
-    Measures the difference between the logit for the generated token
-    and the overall log-probability mass, as a proxy for confidence.
+    Baseline: CCS
+    Computes contextual consistency score between question and answer embeddings.
     """
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
-    model.eval()
-
-    with open(data_path, "r") as f:
-        data = json.load(f)
-
+    embedder = SentenceTransformer('all-MiniLM-L6-v2')
     results = []
-    os.makedirs("results", exist_ok=True)
 
-    for item in tqdm(data, desc="Computing CCS"):
-        q = item["question"]
-        for g in item["generations"]:
-            prompt = f"Answer the question: {q}"
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-            labels = tokenizer(g, return_tensors="pt", add_special_tokens=False).input_ids.to(model.device)
+    for item in dataset:
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
 
-            with torch.no_grad():
-                outputs = model(**inputs)
-                logits = outputs.logits[:, -labels.shape[1]:, :]
+        if not pos or not neg:
+            continue
 
-                # token-level positive log-prob
-                pos = logits.gather(-1, labels.unsqueeze(-1)).squeeze(-1)
-                pos_logp = pos.mean().item()
+        q_emb = embedder.encode(q, convert_to_tensor=True)
+        pos_emb = embedder.encode(pos, convert_to_tensor=True)
+        neg_emb = embedder.encode(neg, convert_to_tensor=True)
 
-                # full softmax log-sum-exp
-                neg_logp = torch.logsumexp(logits, dim=-1).mean().item()
+        score_true = float(util.cos_sim(q_emb, pos_emb))
+        score_false = float(util.cos_sim(q_emb, neg_emb))
 
-                score = pos_logp - neg_logp  # margin
-                results.append({
-                    "question": q,
-                    "generation": g,
-                    "score": float(score)
-                })
+        results.append({"label": 1, "score": score_true})
+        results.append({"label": 0, "score": score_false})
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
-
-    print(f"[✔] Saved CCS results to {output_path}")
     return results
