@@ -1,39 +1,38 @@
-import os
-import json
 import numpy as np
 from tqdm import tqdm
-from sentence_transformers import SentenceTransformer
+from src.prompt import build_eval_prompt
+from src.model import GenConfig
 
-def compute_semantic_entropy(data_path, output_path="results/semantic_entropy.jsonl", model_name="all-MiniLM-L6-v2"):
+def evaluate(model, dataset):
     """
-    Semantic Entropy baseline:
-    Measures disagreement among multiple generations in embedding space.
+    Baseline: Semantic Entropy (SE)
+    Computes semantic diversity among multiple generations.
     """
-    os.makedirs("results", exist_ok=True)
-    data = json.load(open(data_path))
-    model = SentenceTransformer(model_name)
-
     results = []
-    for item in tqdm(data, desc="Computing Semantic Entropy"):
-        gens = item.get("generations", [])
-        if len(gens) < 2:
+    for item in tqdm(dataset, desc="Semantic Entropy"):
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
+
+        if not pos or not neg:
             continue
 
-        embeddings = model.encode(gens, normalize_embeddings=True)
-        
-        sim = np.dot(embeddings, embeddings.T)
-        
-        avg_sim = np.mean(sim[np.triu_indices_from(sim, k=1)])
-        sem_entropy = float(1 - avg_sim)
+        prompt_true = build_eval_prompt(q, [pos])
+        prompt_false = build_eval_prompt(q, [neg])
+        cfg = GenConfig(temperature=0.5, top_p=0.9, max_new_tokens=32)
 
-        results.append({
-            "question": item["question"],
-            "score": sem_entropy
-        })
+        try:
+            outs_true = [model.generate(prompt_true, cfg).text for _ in range(3)]
+            outs_false = [model.generate(prompt_false, cfg).text for _ in range(3)]
+        except Exception as e:
+            print(f"[Semantic Entropy] Error: {e}")
+            continue
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
+        # estimate entropy
+        entropy_true = -np.log(len(set(outs_true)) / 3 + 1e-8)
+        entropy_false = -np.log(len(set(outs_false)) / 3 + 1e-8)
 
-    print(f"[✔] Saved semantic entropy results to {output_path}")
+        results.append({"label": 1, "score": -entropy_true})
+        results.append({"label": 0, "score": -entropy_false})
+
     return results
