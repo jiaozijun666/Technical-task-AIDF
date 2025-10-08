@@ -1,39 +1,28 @@
-import os
-import json
-import torch
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from src.prompt import get_true_false_prompt  
+import numpy as np
 
-def compute_p_true(model_name, data_path, output_path="results/p_true.jsonl"):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
-    model.eval()
-
-    data = json.load(open(data_path))
-    os.makedirs("results", exist_ok=True)
-    true_id = tokenizer(" True", add_special_tokens=False).input_ids[0]
-    false_id = tokenizer(" False", add_special_tokens=False).input_ids[0]
-
+def evaluate(model, dataset):
+    """
+    Baseline: p(True)
+    Computes the log-probability of the model predicting the correct answer.
+    """
     results = []
-    for item in tqdm(data, desc="Computing p(True)"):
-        q = item["question"]
-        for g in item["generations"]:
-            prompt = get_true_false_prompt(q, g)
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-            with torch.no_grad():
-                logits = model(**inputs).logits[:, -1, :].softmax(dim=-1).squeeze()
-            p_true = logits[true_id].item()
-            p_false = logits[false_id].item()
-            score = p_true / (p_true + p_false + 1e-8)
-            results.append({
-                "question": q,
-                "generation": g,
-                "score": float(score)
-            })
+    for item in dataset:
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
-    print(f"[✔] Saved p(True) results to {output_path}")
+        if not pos or not neg:
+            continue
+
+        try:
+            p_true = -model.nll(q, pos)
+            p_false = -model.nll(q, neg)
+        except Exception as e:
+            print(f"[p_true] Error: {e}")
+            continue
+
+        results.append({"label": 1, "score": p_true})
+        results.append({"label": 0, "score": p_false})
+
     return results
+
