@@ -1,39 +1,53 @@
 import os
-import json
-import torch
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from src.prompt import get_hami_instruction
+from src.model import get_model, GenConfig
+from src.prompt import build_hami_prompt
 
-def train_and_evaluate_hami(data_path="data/squad_refined.json",
-                            model_name="meta-llama/Llama-3.1-8B-Instruct",
-                            output_path="results/hami.jsonl"):
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
-    model.eval()
 
-    data = json.load(open(data_path))
+def compute_hami(pairs, model_id="meta-llama/Llama-3.2-1B-Instruct", save_path="results/hami_results.json"):
+    """
+    HaMI baseline: Compare two candidate answers (A and B) for each question,
+    and let the model choose which is more correct.
+    """
+
+    model = get_model(model_id, backend="hf")
     results = []
-    os.makedirs("results", exist_ok=True)
 
-    for item in tqdm(data, desc="Running HaMI Evaluation"):
-        q, gen, label = item["question"], item["generation"], item["label"]
-        prompt = get_hami_instruction(q, gen, label)
+    for item in tqdm(pairs, desc="HaMI baseline"):
+        q = item.get("question", "")
+        gens = item.get("generations", [])
+        if len(gens) < 2:
+            continue
 
-        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-        with torch.no_grad():
-            logits = model(**inputs).logits
-            mean_logit = logits.mean().item()
-        results.append({
-            "question": q,
-            "generation": gen,
-            "label": label,
-            "score": float(mean_logit)
-        })
+        # Pairwise comparison for each consecutive generation
+        for i in range(len(gens) - 1):
+            a_true, a_false = gens[i], gens[i + 1]
+            prompt = build_hami_prompt(q, a_true, a_false)
 
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
+            cfg = GenConfig(temperature=0.3, top_p=1.0, max_new_tokens=10)
+            out = model.generate(prompt, cfg).text.strip()
 
-    print(f"[✔] Saved HaMI evaluation results to {output_path}")
+            pred = "A" if "A" in out else ("B" if "B" in out else "unknown")
+            results.append({
+                "question": q,
+                "A": a_true,
+                "B": a_false,
+                "pred": pred,
+                "raw_output": out
+            })
+
+    # save results
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    import json
+    with open(save_path, "w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+
+    print(f"✅ Saved HaMI results → {save_path}")
     return results
+
+
+if __name__ == "__main__":
+    import json
+    input_path = "data/squad_final.json"
+    pairs = json.load(open(input_path))
+    compute_hami(pairs)
