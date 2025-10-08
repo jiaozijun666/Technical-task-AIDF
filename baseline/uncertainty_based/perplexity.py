@@ -1,39 +1,27 @@
-import os
-import torch
-import math
-import json
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM
+import numpy as np
 
-def compute_perplexity(model_name, data_path, output_path="results/perplexity.jsonl"):
+def evaluate(model, dataset):
     """
-    Compute perplexity-based hallucination detection scores.
-    Lower PPL => more confident => likely factual.
+    Baseline: Perplexity
+    Uses model negative log-likelihood as confidence measure.
     """
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
-    model.eval()
-
-    data = json.load(open(data_path))
     results = []
+    for item in dataset:
+        q = item.get("question", "")
+        pos = item.get("gold") or item.get("pos")
+        neg = item.get("neg") or item.get("answer2")
 
-    for item in tqdm(data, desc="Computing Perplexity"):
-        q = item["question"]
-        for g in item["generations"]:
-            text = f"Question: {q}\nAnswer: {g}"
-            inputs = tokenizer(text, return_tensors="pt").to(model.device)
-            with torch.no_grad():
-                loss = model(**inputs, labels=inputs["input_ids"]).loss
-            ppl = math.exp(loss.item())
-            results.append({
-                "question": q,
-                "generation": g,
-                "score": ppl
-            })
+        if not pos or not neg:
+            continue
 
-    os.makedirs("results", exist_ok=True)
-    with open(output_path, "w") as f:
-        for r in results:
-            f.write(json.dumps(r) + "\n")
-    print(f"[✔] Saved perplexity scores to {output_path}")
+        try:
+            ppl_true = -model.nll(q, pos)
+            ppl_false = -model.nll(q, neg)
+        except Exception as e:
+            print(f"[Perplexity] Error: {e}")
+            continue
+
+        results.append({"label": 1, "score": ppl_true})
+        results.append({"label": 0, "score": ppl_false})
+
     return results
