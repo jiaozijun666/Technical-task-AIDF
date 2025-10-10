@@ -67,7 +67,7 @@ def main():
         # Uncertainty-based
         "p_true": eval_p_true,
         "perplexity": eval_perplexity,
-        "semantic_entropy": eval_semantic_entropy,
+        "semantic_entropy": eval_semantic_entropy, 
         "mars": eval_mars,
         "mars_se": eval_mars_se,
 
