@@ -16,3 +16,4 @@ seaborn>=0.13.2
 python-dotenv>=1.0.1
 ujson>=5.10.0
 rich>=13.7.1
+sentence_transformers

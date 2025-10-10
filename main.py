@@ -1,5 +1,6 @@
 import os
 import json
+import subprocess
 from datetime import datetime
 from sklearn.metrics import roc_auc_score
 from src.model import get_model
@@ -17,82 +18,76 @@ from HaMI.hami import run_hami
 from HaMI.hami_star import run_hami_star
 
 
-def evaluate_baseline(eval_fn, model, dataset, name):
-    print(f"\n[INFO] Running baseline: {name}")
-    results = eval_fn(model, dataset)
-    y_true = [r["label"] for r in results if "label" in r]
-    y_score = [r["score"] for r in results if "score" in r]
 
-    if len(set(y_true)) < 2:
-        print(f"[WARN] {name}: Only one label present, AUROC cannot be computed.")
+def load_local_dataset(path):
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Dataset {path} not found.")
+    with open(path, "r") as f:
+        data = json.load(f)
+    return data
+
+def generate_data_if_needed():
+    data_path = "data/quadru.pairs.json"
+    if not os.path.exists(data_path):
+        print("[INFO] quadru.pairs.json not found. Generating data automatically...")
+        subprocess.run(["python", "src/random_pairs.py"], check=True)
+        subprocess.run(["python", "src/final_select.py"], check=True)
+
+def compute_auroc(results):
+    labels = [r["label"] for r in results if "label" in r and "score" in r]
+    scores = [r["score"] for r in results if "label" in r and "score" in r]
+    if len(set(labels)) < 2:
+        print("[WARN] Only one label present, AUROC cannot be computed.")
         return None
-
-    auc = roc_auc_score(y_true, y_score)
-    print(f"[RESULT] {name}: AUROC = {auc:.4f}")
-    return auc
+    return roc_auc_score(labels, scores)
 
 def main():
-    # Step 1. Model setup
-    model_id = "meta-llama/Llama-3.2-8B-Instruct"
-    print(f"[INFO] Initializing model: {model_id}")
-    model = get_model(model_id)
-    print("[INFO] Model loaded successfully.")
+    model_id = "meta-llama/Llama-3.1-8B-Instruct"
+    backend = "hf"
+    dataset_path = "data/quadru.pairs.json"
 
-    # Step 2. Dataset preparation
-    data_path = "data/squad_random_pairs.json"
-    if not os.path.exists(data_path):
-        print("[WARN] Dataset not found. Generating random pairs...")
-        dataset = generate_random_pairs()
+    generate_data_if_needed()
+    if os.path.exists(dataset_path):
+        dataset = load_local_dataset(dataset_path)
     else:
-        dataset = load_dataset(data_path)
+        dataset = load_dataset("json", data_files=dataset_path)["train"]
 
-    print(f"[INFO] Dataset loaded: {len(dataset)} samples")
+    model = get_model(model_id, backend)
+    results_summary = {}
 
-    # Step 3. Define all baselines
     baselines = {
-        # Uncertainty-based
-        "p_true": eval_p_true,
-        "perplexity": eval_perplexity,
-        "semantic_entropy": eval_semantic_entropy,
-        "mars": eval_mars,
-        "mars_se": eval_mars_se,
-
-        # Internal representation-based
-        "ccs": eval_ccs,
-        "saplma": eval_saplma,
-        "haloscope": eval_haloscope,
-
-        # HaMI variants
-        "HaMI": run_hami,
-        "HaMI_star": run_hami_star,
+        "p_true": p_true_eval,
+        "perplexity": perplexity_eval,
+        "semantic_entropy": entropy_eval,
+        "mars": mars_eval,
+        "mars_se": mars_se_eval,
+        "ccs": ccs_eval,
+        "saplma": saplma_eval,
+        "haloscope": haloscope_eval,
+        "HaMI": hami_eval,
+        "HaMI_star": hami_star_eval
     }
 
-    # Step 4. Evaluate all baselines
-    results = {}
-    for name, fn in baselines.items():
+    for name, func in baselines.items():
+        print(f"[INFO] Running baseline: {name}")
         try:
-            auc = evaluate_baseline(fn, model, dataset, name)
-            results[name] = auc
+            results = func(model, dataset)
+            auroc = compute_auroc(results)
+            results_summary[name] = auroc if auroc is not None else "FAILED"
+            print(f"[RESULT] {name}: AUROC = {results_summary[name]}")
         except Exception as e:
             print(f"[ERROR] {name} failed: {e}")
-            results[name] = None
+            results_summary[name] = "FAILED"
 
-    # Step 5. Save summary results
     os.makedirs("results", exist_ok=True)
-    result_path = f"results/auroc_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(result_path, "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"\n[INFO] AUROC summary saved to {result_path}")
+    output_path = os.path.join("results", f"auroc_summary.json")
+    with open(output_path, "w") as f:
+        json.dump(results_summary, f, indent=2)
 
-    # Step 6. Print summary table
-    print("\n==================== Final AUROC Summary ====================")
-    for name, auc in results.items():
-        if auc is None:
-            print(f"{name:<20} : FAILED")
-        else:
-            print(f"{name:<20} : {auc:.4f}")
-    print("=============================================================\n")
-
+    print("\n================ Final AUROC Summary ================")
+    for k, v in results_summary.items():
+        print(f"{k:15s}: {v}")
+    print("=====================================================")
 
 if __name__ == "__main__":
     main()
