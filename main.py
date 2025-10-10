@@ -14,8 +14,9 @@ from baseline.uncertainty_based.mars_se import evaluate as eval_mars_se
 from baseline.internal_representation_based.ccs import evaluate as eval_ccs
 from baseline.internal_representation_based.saplma import evaluate as eval_saplma
 from baseline.internal_representation_based.haloscope import evaluate as eval_haloscope
-from HaMI.hami import run_hami
-from HaMI.hami_star import run_hami_star
+from HaMI.hami import evaluate as eval_hami
+from HaMI.hami_star import evaluate as eval_hami_star
+
 
 
 
@@ -56,16 +57,16 @@ def main():
     results_summary = {}
 
     baselines = {
-        "p_true": p_true_eval,
-        "perplexity": perplexity_eval,
-        "semantic_entropy": entropy_eval,
-        "mars": mars_eval,
-        "mars_se": mars_se_eval,
-        "ccs": ccs_eval,
-        "saplma": saplma_eval,
-        "haloscope": haloscope_eval,
-        "HaMI": hami_eval,
-        "HaMI_star": hami_star_eval
+        "p_true": eval_p_true,
+        "perplexity": eval_perplexity,
+        "semantic_entropy": eval_semantic_entropy,
+        "mars": eval_mars,
+        "mars_se": eval_mars_se,
+        "ccs": eval_ccs,
+        "saplma": eval_saplma,
+        "haloscope": eval_haloscope,
+        "HaMI": eval_hami,
+        "HaMI_star": eval_hami_star
     }
 
     for name, func in baselines.items():
