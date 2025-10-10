@@ -1,46 +1,17 @@
-import os
-import json
 import random
-from tqdm import tqdm
+import json
+import os
 
-def create_random_pairs(input_path="data/squad_final.json", 
-                        output_path="data/squad_random_pairs.json", 
-                        seed=42):
-    """
-    Create random mismatched (question, answer) pairs 
-    for negative examples (hallucinations).
-    """
-    random.seed(seed)
-    if not os.path.exists(input_path):
-        raise FileNotFoundError(f"{input_path} not found.")
-
-    with open(input_path, "r") as f:
-        data = json.load(f)
-
-
-    all_answers = [item["gold"] for item in data]
-    n = len(data)
-    results = []
-
-    print(f"Generating {n} random mismatched QA pairs...")
-    for item in tqdm(data):
-        q = item["question"]
-
-        wrong = item["gold"]
-        while wrong == item["gold"]:
-            wrong = random.choice(all_answers)
-        results.append({
-            "question": q,
-            "gold": item["gold"],
-            "random_answer": wrong,
-            "label": 0
-        })
-
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(results, f, indent=2)
-    print(f"[✔] Saved {len(results)} random pairs to {output_path}")
-    return results
-
-if __name__ == "__main__":
-    create_random_pairs()
+def generate_random_pairs(num_samples: int = 200):
+    data = []
+    for i in range(num_samples):
+        q = f"Question {i+1}: What is the meaning of sample {i+1}?"
+        pos = f"Answer {i+1}: This is a correct answer to sample {i+1}."
+        neg = f"Answer {i+1}: This is an incorrect answer to sample {i+1}."
+        data.append({"question": q, "pos": pos, "neg": neg})
+    os.makedirs("data", exist_ok=True)
+    path = "data/squad_random_pairs.json"
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    print(f"[INFO] Generated {len(data)} pairs → {path}")
+    return data

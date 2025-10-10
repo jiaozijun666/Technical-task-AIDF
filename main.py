@@ -1,120 +1,103 @@
 import os
 import json
-import numpy as np
-from tqdm import tqdm
-from sklearn.metrics import roc_auc_score, f1_score, precision_recall_fscore_support
-
-from baseline.uncertainty_based.perplexity import compute_perplexity
-from baseline.uncertainty_based.semantic_entropy import compute_semantic_entropy
-from baseline.uncertainty_based.mars import compute_mars
-from baseline.uncertainty_based.mars_se import compute_mars_se
-from baseline.uncertainty_based.p_true import compute_p_true
-
-from baseline.internal_representation_based.haloscope import compute_haloscope
-from baseline.internal_representation_based.ccs import compute_ccs
-from baseline.internal_representation_based.saplma import compute_saplma
-
-from HaMI.hami import train_and_evaluate_hami
-from HaMI.enhanced_hami import train_enhanced_hami
+from datetime import datetime
+from sklearn.metrics import roc_auc_score
+from src.model import get_model
+from src.random_pairs import generate_random_pairs
+from baseline.uncertainty_based.p_true import evaluate as eval_p_true
+from baseline.uncertainty_based.perplexity import evaluate as eval_perplexity
+from baseline.uncertainty_based.semantic_entropy import evaluate as eval_semantic_entropy
+from baseline.uncertainty_based.mars import evaluate as eval_mars
+from baseline.uncertainty_based.mars_se import evaluate as eval_mars_se
+from baseline.internal_representation_based.ccs import evaluate as eval_ccs
+from baseline.internal_representation_based.saplma import evaluate as eval_saplma
+from baseline.internal_representation_based.haloscope import evaluate as eval_haloscope
+from HaMI.hami import run_hami
+from HaMI.hami_star import run_hami_star
 
 
-RESULT_DIR = "results"
+def compute_auroc(preds):
+    """Compute AUROC given a list of {'label': int, 'score': float}"""
+    labels = [p["label"] for p in preds]
+    scores = [p["score"] for p in preds]
+    try:
+        return float(roc_auc_score(labels, scores))
+    except Exception:
+        return float("nan")
 
 
-def evaluate_predictions(pred_path, gold_path="data/squad_refined.json"):
-    """
-    Compute AUROC, F1, Precision, Recall for a given baseline output.
-    """
-    if not os.path.exists(pred_path):
-        print(f"Warning: {pred_path} not found, skipping.")
-        return None
+def print_summary_table(results_dict):
+    """Print AUROC summary in a clean table format"""
+    print("\n" + "=" * 60)
+    print("AUROC SUMMARY TABLE")
+    print("=" * 60)
+    for k, v in results_dict.items():
+        if isinstance(v, float):
+            print(f"{k:<20} {v:.3f}")
+        else:
+            print(f"{k:<20} {v}")
+    print("=" * 60 + "\n")
 
-    with open(gold_path, "r") as f:
-        gold_data = json.load(f)
-    gold_dict = {(d["question"], d.get("generation", "")): d["label"] for d in gold_data}
 
-    preds, labels = [], []
-    with open(pred_path, "r") as f:
-        for line in f:
-            d = json.loads(line)
-            key = (d["question"], d.get("generation", ""))
-            if key in gold_dict:
-                preds.append(d["score"])
-                labels.append(gold_dict[key])
-
-    if len(labels) < 2:
-        print(f"Warning: Not enough valid samples in {pred_path}")
-        return None
-
-    preds, labels = np.array(preds), np.array(labels)
-    auroc = roc_auc_score(labels, preds)
-    f1 = f1_score(labels, preds > 0.5)
-    prec, rec, _, _ = precision_recall_fscore_support(labels, preds > 0.5, average="binary")
-
-    return {
-        "AUROC": round(auroc, 4),
-        "F1": round(f1, 4),
-        "Precision": round(prec, 4),
-        "Recall": round(rec, 4),
-        "N": len(labels)
-    }
+def ensure_dir(path):
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
 
 
 def main():
-    os.makedirs(RESULT_DIR, exist_ok=True)
-    data_path = "data/squad_refined.json"
-    model_name = "meta-llama/Llama-3.1-8B-Instruct"
+    print("\nStarting full benchmark run...\n")
 
-    print("Running all baselines and HaMI variants...\n")
+    # Step 1: Prepare dataset
+    print("[INFO] Step 1: Preparing dataset...")
+    data_path = "data/squad_random_pairs.json"
+    if not os.path.exists(data_path):
+        dataset = generate_random_pairs(num_samples=200)
+    else:
+        with open(data_path, "r") as f:
+            dataset = json.load(f)
+        print(f"[INFO] Loaded existing dataset with {len(dataset)} samples.")
 
-    compute_perplexity(model_name, data_path, f"{RESULT_DIR}/perplexity.jsonl")
-    compute_semantic_entropy(data_path, f"{RESULT_DIR}/semantic_entropy.jsonl")
-    compute_mars(data_path, f"{RESULT_DIR}/mars.jsonl")
-    compute_mars_se(data_path, f"{RESULT_DIR}/mars_se.jsonl")
-    compute_p_true(model_name, data_path, f"{RESULT_DIR}/p_true.jsonl")
+    # Step 2: Load model
+    print("\n[INFO] Step 2: Loading model...")
+    model = get_model("meta-llama/Llama-3.1-8B-Instruct", backend="hf")
 
-    compute_haloscope(data_path, f"{RESULT_DIR}/haloscope.jsonl")
-    compute_ccs(model_name, data_path, f"{RESULT_DIR}/ccs.jsonl")
-    compute_saplma(model_name, data_path, f"{RESULT_DIR}/saplma.jsonl")
+    # Step 3: Run all baselines
+    print("\n[INFO] Step 3: Running baseline models...")
+    baselines = {
+        # Uncertainty-based
+        "p_true": eval_p_true,
+        "perplexity": eval_perplexity,
+        "semantic_entropy": eval_semantic_entropy,
+        "mars": eval_mars,
+        "mars_se": eval_mars_se,
 
-   
-    train_and_evaluate_hami(data_path, model_name, f"{RESULT_DIR}/hami.jsonl")
+        # Internal representation-based
+        "ccs": eval_ccs,
+        "saplma": eval_saplma,
+        "haloscope": eval_haloscope,
+    }
 
- 
-    train_enhanced_hami(data_path, f"{RESULT_DIR}/enhanced_hami.jsonl")
+    results = {}
+    for name, func in baselines.items():
+        print(f"[INFO] Running {name} ...")
+        preds = func(model, dataset)
+        auroc = compute_auroc(preds)
+        results[name] = auroc
+        print(f"{name} AUROC = {auroc:.3f}")
 
-    
-    baselines = [
-        "perplexity",
-        "semantic_entropy",
-        "mars",
-        "mars_se",
-        "p_true",
-        "haloscope",
-        "ccs",
-        "saplma",
-        "hami",
-        "enhanced_hami"
-    ]
+    # Step 4: Run HaMI and HaMI★
+    print("\n[INFO] Step 4: Running HaMI and HaMI★ ...")
+    results["HaMI"] = run_hami(model, dataset)
+    results["HaMI★"] = run_hami_star(model, dataset)
 
-    summary = {}
-    for b in tqdm(baselines, desc="Evaluating all methods"):
-        pred_file = os.path.join(RESULT_DIR, f"{b}.jsonl")
-        metrics = evaluate_predictions(pred_file, data_path)
-        if metrics:
-            summary[b] = metrics
-
-    # === Step 5: Save summary ===
-    summary_path = os.path.join(RESULT_DIR, "summary.json")
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2)
-
-    print("\n=== Evaluation Summary ===")
-    for name, m in summary.items():
-        print(f"{name:<18} | AUROC: {m['AUROC']:.4f} | F1: {m['F1']:.4f} | "
-              f"P: {m['Precision']:.4f} | R: {m['Recall']:.4f}")
-    print(f"\nSummary saved to {summary_path}")
-
+    # Step 5: Summarize and save
+    print_summary_table(results)
+    ensure_dir("results")
+    save_path = os.path.join("results", "summary.json")
+    results["timestamp"] = datetime.now().isoformat()
+    with open(save_path, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"Results saved to {save_path}\n")
 
 
 if __name__ == "__main__":

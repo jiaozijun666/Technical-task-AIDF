@@ -1,58 +1,46 @@
 import os
 import json
 from tqdm import tqdm
-from typing import List
-from model import get_model, GenConfig
-from prompt import build_generation_prompt
+from src.model import get_model, GenConfig
+from src.prompt import build_eval_prompt
 
-
-def load_data(path: str) -> List[dict]:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"{path} not found. Run process_data.py first.")
-    with open(path, "r") as f:
-        return json.load(f)
-
-
-def generate_multiple_answers(
-    data: List[dict],
-    model_id: str = "meta-llama/Llama-3.1-8B-Instruct",
-    n_samples: int = 6,
-    output_path: str = "data/squad_multi.json",
-    backend: str = "hf",
-):
+def generate_multiple_answers(data, model_id="meta-llama/Llama-3.2-1B-Instruct", n=6, output_path="data/squad_multi_debug.json"):
     """
-    Generate multiple answers for each question using a unified model interface.
-    Works with both Hugging Face and Ollama backends.
+    Generate multiple diverse answers per question.
+    Each question will have `n` sampled generations.
     """
-    print(f"Loading model via unified client: {model_id} (backend={backend})")
-    model = get_model(model_id, backend=backend)
-    cfg = GenConfig(max_new_tokens=64, temperature=0.6, top_p=0.9, do_sample=True)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    model = get_model(model_id)
+    print(f"[INFO] Loaded model: {model_id}")
 
     results = []
-    for item in tqdm(data, desc="Generating multiple samples"):
-        question = item["question"]
-        gold = item["answers"]["text"][0] if "answers" in item else item["gold"]
-        generations = []
+    for item in tqdm(data, desc="Generating multi-sample answers"):
+        q = item["question"]
+        gold = item.get("gold", "")
 
-        for _ in range(n_samples):
-            prompt = build_generation_prompt(question)
+        generations = []
+        for _ in range(n):
+            prompt = build_eval_prompt(q)
+            cfg = GenConfig(temperature=0.7, top_p=0.9, max_new_tokens=64)
             out = model.generate(prompt, cfg)
-            generations.append(out.text)
+            generations.append(out.text.strip())
 
         results.append({
-            "question": question,
+            "question": q,
             "gold": gold,
             "generations": generations
         })
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as f:
-        json.dump(results, f, indent=2)
-
-    print(f"[✔] Saved {len(results)} questions with multi-samples to {output_path}")
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    print(f"[INFO] Saved multi-sample data to {output_path}")
+    print(f"[INFO] Total questions processed: {len(results)}")
 
 
 if __name__ == "__main__":
-    input_path = "data/squad_test.json"
-    data = load_data(input_path)
+    from datasets import load_dataset
+
+    ds = load_dataset("rajpurkar/squad")["validation"]
+    data = [{"question": d["question"], "gold": d["answers"]["text"][0]} for d in ds.select(range(50))]  # subset
+
     generate_multiple_answers(data)
