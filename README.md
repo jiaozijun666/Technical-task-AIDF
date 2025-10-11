@@ -1,7 +1,7 @@
 # Technical-task-AIDF
 Pre-project Task - Hallucination Detection
 
-All script runs on google colab or kaggle notebook with model meta-llama/Llama-3.2-1B-Instruct for test and model meta-llama/Llama-3.1-8B-Instruct for whole.
+All files run on a NVIDIA A100 GPU rented from vest.ai with model LLaMA-3.1-8B requested from Meta official website.
 
 ### Repository Structure
 ```
@@ -68,31 +68,11 @@ Technical-task-AIDF/
 ### Detailed process as follows:
 Clone the repository to Google Colab
 ```{python}
-!git clone https://github.com/jiaozijun666/Technical-task-AIDF.git
-%cd Technical-task-AIDF
+git clone https://github.com/jiaozijun666/Technical-task-AIDF.git
+cd Technical-task-AIDF
 ```
 Downloading the necessary packages
 ```{python}
-!pip install -r requirements.txt
-!pip install bitsandbytes accelerate transformers datasets
-```
-Login the hugging face hub for model API(need HF tokens)
-```{python}
-from huggingface_hub import login
-login()
-```
-Make sure you can run the files successfully
-```{python}
-import os, sys
-sys.path.append('/content/Technical-task-AIDF/src')
-os.chdir('/content/Technical-task-AIDF')
-```
-Running the piplines in following order
-```{python}
-!python src/process_data.py
-!python src/multi_sample.py
-!python src/final_select.py
-!python src/random_pairs.py
-!python src/refined_set.py
-!python main.py  
+pip install -r requirements.txt
+pip install bitsandbytes accelerate transformers datasets
 ```
