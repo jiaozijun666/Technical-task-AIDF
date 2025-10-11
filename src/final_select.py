@@ -20,7 +20,7 @@ def filter_generations(generations, min_len=10):
         filtered.append(text)
     return filtered
 
-def select_high_quality(data, sample_size=500, retain_size=400, seed=42, output_path="data/squad_final.json"):
+def select_high_quality(data, sample_size=500, retain_size=400, seed=42, output_path = "data/quadru_pairs.json"):
     random.seed(seed)
     sampled = random.sample(data, min(sample_size, len(data)))
     final_data = []

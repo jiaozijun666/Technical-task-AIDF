@@ -1,17 +1,17 @@
-import random
-import json
-import os
+import json, random, os
 
-def generate_random_pairs(num_samples: int = 200):
-    data = []
-    for i in range(num_samples):
-        q = f"Question {i+1}: What is the meaning of sample {i+1}?"
-        pos = f"Answer {i+1}: This is a correct answer to sample {i+1}."
-        neg = f"Answer {i+1}: This is an incorrect answer to sample {i+1}."
-        data.append({"question": q, "pos": pos, "neg": neg})
+def make_random_pairs():
+    with open("data/squad_train.json") as f:
+        data = json.load(f)
+    pairs = []
+    for item in data:
+        q = item["question"]
+        gold = item["answers"]["text"][0]
+        wrong = random.choice(data)["answers"]["text"][0]
+        if wrong == gold: continue
+        pairs.append({"question": q, "gold": gold, "neg": wrong})
     os.makedirs("data", exist_ok=True)
-    path = "data/squad_random_pairs.json"
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    print(f"[INFO] Generated {len(data)} pairs → {path}")
-    return data
+    json.dump(pairs, open("data/squad_random_pairs.json", "w"), indent=2)
+
+if __name__ == "__main__":
+    make_random_pairs()

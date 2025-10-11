@@ -1,31 +1,17 @@
 import numpy as np
-from sentence_transformers import SentenceTransformer, util
+from tqdm import tqdm
 
-def evaluate(model, dataset):
-    """
-    Baseline: SAPLMA
-    Computes self-attentive pooled latent matching alignment between embeddings.
-    """
-    embedder = SentenceTransformer('all-MiniLM-L6-v2')
+def compute_saplma(client, data, temperature=0.5):
     results = []
-
-    for item in dataset:
-        q = item.get("question", "")
-        pos = item.get("gold") or item.get("pos")
-        neg = item.get("neg") or item.get("answer2")
-
-        if not pos or not neg:
-            continue
-
-        q_emb = embedder.encode(q, convert_to_tensor=True)
-        pos_emb = embedder.encode(pos, convert_to_tensor=True)
-        neg_emb = embedder.encode(neg, convert_to_tensor=True)
-
-        # Use normalized dot product as alignment
-        score_true = float(util.dot_score(q_emb, pos_emb))
-        score_false = float(util.dot_score(q_emb, neg_emb))
-
-        results.append({"label": 1, "score": score_true})
-        results.append({"label": 0, "score": score_false})
-
-    return results
+    for item in tqdm(data, desc="SAPLMA"):
+        q = item["question"]
+        gold = item["gold"]
+        prompt = f"How semantically aligned is this answer to the question (0-1)?\nQ: {q}\nA: {gold}"
+        res = client.text_generation(prompt, model="meta-llama/Llama-3.1-8B",
+                                     temperature=temperature, max_new_tokens=4)
+        try:
+            score = float(res.strip()[:3])
+        except:
+            score = 0.0
+        results.append(score)
+    return {"mean": np.mean(results), "scores": results}

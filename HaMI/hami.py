@@ -1,21 +1,15 @@
 import numpy as np
 from tqdm import tqdm
-from src.utils import calculate_agreement
 
-def evaluate(model, dataset):
+def compute_hami(client, data, temperature=0.3):
     results = []
-    for item in tqdm(dataset, desc="HaMI"):
-        q = item.get("question", "")
-        pos = item.get("pos") or item.get("gold") or item.get("answer")
-        neg = item.get("neg") or item.get("answer2")
-        if not pos or not neg:
-            continue
-        try:
-            score_true = calculate_agreement(model, q, pos, neg)
-            score_false = 1 - score_true
-        except Exception as e:
-            print(f"[HaMI] Error: {e}")
-            continue
-        results.append({"label": 1, "score": score_true})
-        results.append({"label": 0, "score": score_false})
-    return results
+    for item in tqdm(data, desc="HaMI"):
+        q = item["question"]
+        gold = item["gold"]
+        neg = item["neg"]
+        prompt = f"Which answer is more factually correct for the question?\nQuestion: {q}\nA: {gold}\nB: {neg}\nAnswer A or B."
+        res = client.text_generation(prompt, model="meta-llama/Llama-3.1-8B",
+                                     temperature=temperature, max_new_tokens=4)
+        pred = 1 if "a" in res.lower() else 0
+        results.append(pred)
+    return {"mean": np.mean(results), "scores": results}

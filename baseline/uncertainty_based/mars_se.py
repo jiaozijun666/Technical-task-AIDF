@@ -1,31 +1,21 @@
 import numpy as np
-from sentence_transformers import SentenceTransformer, util
+from tqdm import tqdm
 
-def evaluate(model, dataset):
-    """
-    Baseline: MARS-SE
-    Extends MARS by computing similarity entropy over multiple samples.
-    """
-    embedder = SentenceTransformer('all-MiniLM-L6-v2')
+def compute_mars_se(client, data, n_samples=5, temperature=0.5):
     results = []
-
-    for item in dataset:
-        q = item.get("question", "")
-        pos = item.get("gold") or item.get("pos")
-        neg = item.get("neg") or item.get("answer2")
-
-        if not pos or not neg:
-            continue
-
-        q_emb = embedder.encode(q, convert_to_tensor=True)
-        pos_emb = embedder.encode(pos, convert_to_tensor=True)
-        neg_emb = embedder.encode(neg, convert_to_tensor=True)
-
-        sim_pos = float(util.cos_sim(q_emb, pos_emb))
-        sim_neg = float(util.cos_sim(q_emb, neg_emb))
-
-        entropy = abs(sim_pos - sim_neg)
-        results.append({"label": 1, "score": sim_pos - entropy})
-        results.append({"label": 0, "score": sim_neg - entropy})
-
-    return results
+    for item in tqdm(data, desc="MARS-SE"):
+        q = item["question"]
+        gold = item["gold"]
+        scores = []
+        for _ in range(n_samples):
+            prompt = f"Question: {q}\nAnswer: {gold}\nRate the factual correctness of this answer from 0 to 1."
+            res = client.text_generation(prompt, model="meta-llama/Llama-3.1-8B",
+                                         temperature=temperature, max_new_tokens=4)
+            try:
+                score = float(res.strip()[:3])
+                scores.append(score)
+            except:
+                continue
+        entropy = -np.sum(np.log(np.clip(scores, 1e-8, 1))) / len(scores)
+        results.append(entropy)
+    return {"mean": np.mean(results), "scores": results}

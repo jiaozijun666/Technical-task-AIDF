@@ -1,3 +1,3 @@
-from .hami import run_hami
-from .hami_star import run_hami_star
-
+from .hami import evaluate as eval_hami
+from .hami_star import evaluate as eval_hami_star
+__all__ = ["eval_hami", "eval_hami_star"]

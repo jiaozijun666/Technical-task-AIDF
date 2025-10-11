@@ -1,94 +1,72 @@
 import os
+import numpy as np
 import json
 import subprocess
-from datetime import datetime
-from sklearn.metrics import roc_auc_score
-from src.model import get_model
-from src.data import load_dataset
-from src.random_pairs import generate_random_pairs
-from baseline.uncertainty_based.p_true import evaluate as eval_p_true
-from baseline.uncertainty_based.perplexity import evaluate as eval_perplexity
-from baseline.uncertainty_based.semantic_entropy import evaluate as eval_semantic_entropy
-from baseline.uncertainty_based.mars import evaluate as eval_mars
-from baseline.uncertainty_based.mars_se import evaluate as eval_mars_se
-from baseline.internal_representation_based.ccs import evaluate as eval_ccs
-from baseline.internal_representation_based.saplma import evaluate as eval_saplma
-from baseline.internal_representation_based.haloscope import evaluate as eval_haloscope
-from HaMI.hami import evaluate as eval_hami
-from HaMI.hami_star import evaluate as eval_hami_star
+from huggingface_hub import InferenceClient
+from baseline.uncertainty_based.p_true import compute_p_true
+from baseline.uncertainty_based.perplexity import compute_perplexity
+from baseline.uncertainty_based.semantic_entropy import compute_semantic_entropy
+from baseline.uncertainty_based.mars import compute_mars
+from baseline.uncertainty_based.mars_se import compute_mars_se
+from baseline.internal_representation_based.ccs import compute_ccs
+from baseline.internal_representation_based.saplma import compute_saplma
+from baseline.internal_representation_based.haloscope import compute_haloscope
+from HaMI.hami import compute_hami
+from HaMI.hami_star import compute_hami_star
+from sklearn.metrics import roc_auc_score, accuracy_score
 
 
+def generate_data():
+    os.makedirs("data", exist_ok=True)
+    subprocess.run(["python", "process_data.py"], check=True)
+    subprocess.run(["python", "random_pairs.py"], check=True)
+    subprocess.run(["python", "multi_sample.py"], check=True)
+    subprocess.run(["python", "refined_set.py"], check=True)
 
+def load_refined():
+    with open("data/squad_refined.json") as f:
+        return json.load(f)
 
-def load_local_dataset(path):
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Dataset {path} not found.")
-    with open(path, "r") as f:
-        data = json.load(f)
-    return data
+def run_all(client, data):
+    results = {}
+    results["p_true"] = compute_p_true(client, data)
+    results["perplexity"] = compute_perplexity(client, data)
+    results["semantic_entropy"] = compute_semantic_entropy(client, data)
+    results["mars"] = compute_mars(client, data)
+    results["mars_se"] = compute_mars_se(client, data)
+    results["ccs"] = compute_ccs(client, data)
+    results["saplma"] = compute_saplma(client, data)
+    results["haloscope"] = compute_haloscope(client, data)
+    results["hami"] = compute_hami(client, data)
+    results["hami_star"] = compute_hami_star(client, data)
+    return results
 
-def generate_data_if_needed():
-    data_path = "data/quadru.pairs.json"
-    if not os.path.exists(data_path):
-        print("[INFO] quadru.pairs.json not found. Generating data automatically...")
-        subprocess.run(["python", "src/random_pairs.py"], check=True)
-        subprocess.run(["python", "src/final_select.py"], check=True)
-
-def compute_auroc(results):
-    labels = [r["label"] for r in results if "label" in r and "score" in r]
-    scores = [r["score"] for r in results if "label" in r and "score" in r]
-    if len(set(labels)) < 2:
-        print("[WARN] Only one label present, AUROC cannot be computed.")
-        return None
-    return roc_auc_score(labels, scores)
+def evaluate(results, data):
+    y_true = [1 for _ in data]
+    metrics = {}
+    for name, res in results.items():
+        y_pred = np.array(res["scores"])
+        if np.all(y_pred == y_pred[0]):
+            auc = 0.5
+        else:
+            auc = roc_auc_score(y_true, y_pred)
+        acc = accuracy_score(np.round(y_pred), y_true)
+        metrics[name] = {"AUROC": float(auc), "ACC": float(acc)}
+    return metrics
 
 def main():
-    model_id = "meta-llama/Llama-3.1-8B-Instruct"
-    backend = "hf"
-    dataset_path = "data/quadru.pairs.json"
-
-    generate_data_if_needed()
-    if os.path.exists(dataset_path):
-        dataset = load_local_dataset(dataset_path)
-    else:
-        dataset = load_dataset("json", data_files=dataset_path)["train"]
-
-    model = get_model(model_id, backend)
-    results_summary = {}
-
-    baselines = {
-        "p_true": eval_p_true,
-        "perplexity": eval_perplexity,
-        "semantic_entropy": eval_semantic_entropy,
-        "mars": eval_mars,
-        "mars_se": eval_mars_se,
-        "ccs": eval_ccs,
-        "saplma": eval_saplma,
-        "haloscope": eval_haloscope,
-        "HaMI": eval_hami,
-        "HaMI_star": eval_hami_star
-    }
-
-    for name, func in baselines.items():
-        print(f"[INFO] Running baseline: {name}")
-        try:
-            results = func(model, dataset)
-            auroc = compute_auroc(results)
-            results_summary[name] = auroc if auroc is not None else "FAILED"
-            print(f"[RESULT] {name}: AUROC = {results_summary[name]}")
-        except Exception as e:
-            print(f"[ERROR] {name} failed: {e}")
-            results_summary[name] = "FAILED"
-
+    if not os.path.exists("data/squad_refined.json"):
+        generate_data()
+    data = load_refined()
+    token = os.getenv("HF_TOKEN")
+    if not token:
+        raise EnvironmentError("Missing Hugging Face token.")
+    client = InferenceClient(model="meta-llama/Llama-3.1-8B", token=token)
     os.makedirs("results", exist_ok=True)
-    output_path = os.path.join("results", f"auroc_summary.json")
-    with open(output_path, "w") as f:
-        json.dump(results_summary, f, indent=2)
-
-    print("\n================ Final AUROC Summary ================")
-    for k, v in results_summary.items():
-        print(f"{k:15s}: {v}")
-    print("=====================================================")
+    results = run_all(client, data)
+    metrics = evaluate(results, data)
+    json.dump({"scores": results, "metrics": metrics}, open("results/final_results.json", "w"), indent=2)
+    print(json.dumps(metrics, indent=2))
 
 if __name__ == "__main__":
     main()
