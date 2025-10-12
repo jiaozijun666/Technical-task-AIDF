@@ -1,255 +1,525 @@
-import math, os, random, numpy as np, torch, torch.nn as nn, torch.nn.functional as F
-from typing import List, Tuple
+# baseline.py
+# Unified baselines for hallucination detection:
+# p(True), Perplexity, SE, MARS, MARS-SE, CCS, SAPLMA, HaloScope
+# Author: you :)
+# Dependencies: numpy (required), scipy (optional for DBSCAN). No torch required here.
 
-def _device(model): 
-    return model.device
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Callable, List, Optional, Dict, Any, Tuple
+import math
+import numpy as np
 
-def _last_token_states(entry, layer_idx: int):
-    xs = entry["layers"][layer_idx]
-    if len(xs) == 0:
-        return None
-    return np.array(xs[-1], dtype=np.float32)
+try:
+    from scipy.spatial.distance import cdist
+    from scipy.cluster.hierarchy import fclusterdata
+    SCIPY_OK = True
+except Exception:
+    SCIPY_OK = False
 
-def _bce_train_epoch(model, opt, x, y):
-    model.train()
-    bs = 128
-    idx = np.arange(x.shape[0])
-    np.random.shuffle(idx)
-    for i in range(0, len(idx), bs):
-        j = idx[i:i+bs]
-        xb = torch.tensor(x[j], dtype=torch.float32, device=_device(model))
-        yb = torch.tensor(y[j], dtype=torch.float32, device=_device(model))
-        p = model(xb).squeeze(-1)
-        loss = F.binary_cross_entropy_with_logits(p, yb)
-        opt.zero_grad(); loss.backward(); opt.step()
 
-def _infer_logits(model, x):
-    model.eval()
-    with torch.inference_mode():
-        xb = torch.tensor(x, dtype=torch.float32, device=_device(model))
-        p = model(xb).squeeze(-1)
-        return torch.sigmoid(p).detach().cpu().numpy().tolist()
+# ---------------------------
+# Data containers
+# ---------------------------
 
-def run_p_true(entries, tok, model, args):
-    system = "Answer only True or False."
-    template = "Question: {q}\nPrediction: {p}\nIs the prediction exactly correct? Answer True or False."
-    scores, labels = [], []
-    device = _device(model)
-    for e in entries:
-        q, p = e["q"], e["pred"]
-        prompt = system + "\n" + template.format(q=q, p=p)
-        ipt = tok(prompt, return_tensors="pt").to(device)
-        out = model.generate(**ipt, do_sample=False, max_new_tokens=4, eos_token_id=tok.eos_token_id, pad_token_id=tok.pad_token_id)
-        text = tok.decode(out[0], skip_special_tokens=True)
-        y = 1.0 if "True" in text and text.rfind("True") > text.rfind("False") else 0.0
-        scores.append(float(y))
-        labels.append(int(e["label"]))
-    return scores, labels
+@dataclass
+class Generation:
+    """One free-form generation of the same question."""
+    text: str
+    tokens: List[str]
+    # token-level next-token log-probabilities (log p(y_t | y_<t, x))
+    logprobs: List[float]
+    # hidden states for the *generated* tokens (shape: T x D)
+    hidden: Optional[np.ndarray] = None
+    # optional: model-reported self probability (for p(True) style prompting)
+    self_prob_true: Optional[float] = None
 
-def _avg_nll(tok, model, prompt, answer):
-    device = _device(model)
-    ids = tok(prompt + answer, return_tensors="pt").to(device).input_ids
-    ans_ids = tok(answer, return_tensors="pt").to(device).input_ids
-    tgt = ids.clone()
-    tgt[:, :-ans_ids.shape[1]] = -100
-    out = model(ids, labels=tgt)
-    return out.loss.item()
 
-def run_perplexity(entries, tok, model, args):
-    scores, labels = [], []
-    for e in entries:
-        q, p = e["q"], e["pred"]
-        nll = _avg_nll(tok, model, f"Q: {q}\nA: ", p)
-        scores.append(float(-nll))
-        labels.append(int(e["label"]))
-    return scores, labels
+@dataclass
+class Sample:
+    """A training/test sample centered on one question."""
+    question: str
+    gold: Optional[str] = None
+    # the primary generation we want to score
+    gen: Generation = None
+    # multiple generations for multi-sample baselines (SE/MARS-SE)
+    gens: List[Generation] = field(default_factory=list)
+    # Optional known correctness label for supervised probes
+    label: Optional[int] = None  # 1 = hallucinated (positive), 0 = correct (negative)
 
-def _openai_client():
-    from openai import OpenAI
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY is not set")
-    return OpenAI()
 
-def _entails(client, a: str, b: str, model_name: str):
-    m = [
-        {"role":"system","content":"Answer with one token: yes or no."},
-        {"role":"user","content":f"Does \"{a}\" entail \"{b}\" semantically? Answer yes or no."}
-    ]
-    r = client.chat.completions.create(model=model_name, messages=m, temperature=0)
-    t = r.choices[0].message.content.strip().lower()
-    return t.startswith("y")
+# ---------------------------
+# Utilities
+# ---------------------------
 
-def run_se(entries, tok, model, args):
-    M = getattr(args, "se_samples", 6)
-    client = _openai_client()
-    se_model = getattr(args, "se_judge_model", "gpt-3.5-turbo")
-    device = _device(model)
-    scores, labels = [], []
-    for e in entries:
-        q = e["q"]
-        gens = []
-        for _ in range(M):
-            ipt = tok(f"Q: {q}\nA:", return_tensors="pt").to(device)
-            out = model.generate(**ipt, do_sample=True, temperature=getattr(args, "temperature", 0.5), top_p=0.95, max_new_tokens=getattr(args, "max_new_tokens", 64), eos_token_id=tok.eos_token_id, pad_token_id=tok.pad_token_id)
-            gens.append(tok.decode(out[0], skip_special_tokens=True).split("A:",1)[-1].strip())
-        clusters = []
-        for g in gens:
-            placed = False
-            for c in clusters:
-                if _entails(client, g, c[0], se_model) and _entails(client, c[0], g, se_model):
-                    c.append(g); placed = True; break
-            if not placed:
-                clusters.append([g])
-        main = max(len(c) for c in clusters) if clusters else 1
-        pc = main / max(1, len(gens))
-        scores.append(float(pc))
-        labels.append(int(e["label"]))
-    return scores, labels
+def _safe_mean(xs: List[float]) -> float:
+    return float(np.mean(xs)) if len(xs) else 0.0
 
-def _content_weight(tokens: List[str]):
-    ws = []
-    for t in tokens:
-        if t.strip() == "" or t in [",",".",";","?","!","'",'"',":","-","(",")"]:
-            ws.append(0.0)
+def _length_norm_nll(logprobs: List[float]) -> float:
+    """Average NLL (negative mean log prob)."""
+    if not logprobs:
+        return 0.0
+    return float(-np.mean(np.array(logprobs)))
+
+def _perplexity(logprobs: List[float]) -> float:
+    """Per-token perplexity = exp(average NLL)."""
+    return math.exp(_length_norm_nll(logprobs))
+
+def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
+    num = float(np.dot(a, b))
+    den = float(np.linalg.norm(a) * np.linalg.norm(b) + 1e-12)
+    return num / den
+
+def _pairwise_cosine(e: np.ndarray) -> np.ndarray:
+    # e: M x d
+    n = e.shape[0]
+    sims = np.eye(n)
+    for i in range(n):
+        for j in range(i+1, n):
+            s = _cosine_sim(e[i], e[j])
+            sims[i, j] = sims[j, i] = s
+    return sims
+
+def _simple_embed(
+    texts: List[str],
+    embed_fn: Optional[Callable[[List[str]], np.ndarray]] = None,
+) -> np.ndarray:
+    """
+    Returns M x d embeddings. If embed_fn is None, uses a TF-IDF-ish bag-of-char fallback,
+    which is weak but keeps pipeline runnable.
+    """
+    if embed_fn is not None:
+        return embed_fn(texts)
+
+    # Fallback: cheap hashed character n-gram features
+    dim = 512
+    vecs = np.zeros((len(texts), dim), dtype=np.float32)
+    for i, t in enumerate(texts):
+        for ch in t.lower():
+            idx = (ord(ch) * 1315423911) % dim
+            vecs[i, idx] += 1.0
+        # L2 normalize
+        nrm = np.linalg.norm(vecs[i]) + 1e-9
+        vecs[i] /= nrm
+    return vecs
+
+
+def _cluster_entropy_from_embeds(E: np.ndarray, thresh: float = 0.25) -> Tuple[float, Dict[int, int]]:
+    """
+    Approximate Semantic Entropy (SE):
+    - cluster M generations in embedding space
+    - compute cluster distribution p(c) and entropy H = -sum p log p
+    Returns (entropy, cluster_counts)
+    """
+    M = E.shape[0]
+    if M <= 1:
+        return 0.0, {0: M}
+
+    # Simple agglomerative-style clustering via threshold on cosine distance
+    # Build pairwise cosine similarity
+    sims = _pairwise_cosine(E)
+    # Simple union-find by greedy linkage on similarity >= (1 - thresh)
+    parent = list(range(M))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for i in range(M):
+        for j in range(i+1, M):
+            if (1.0 - sims[i, j]) <= thresh:
+                union(i, j)
+
+    # compress and count
+    for i in range(M):
+        parent[i] = find(i)
+    counts: Dict[int, int] = {}
+    for p in parent:
+        counts[p] = counts.get(p, 0) + 1
+
+    probs = np.array(list(counts.values()), dtype=np.float32) / float(M)
+    entropy = float(-np.sum(probs * (np.log(probs + 1e-12))))
+    return entropy, counts
+
+
+def _minmax_scale(x: np.ndarray) -> np.ndarray:
+    lo, hi = float(np.min(x)), float(np.max(x))
+    if hi - lo < 1e-12:
+        return np.zeros_like(x)
+    return (x - lo) / (hi - lo)
+
+
+# ---------------------------
+# Base API
+# ---------------------------
+
+class BaseDetector:
+    name: str = "Base"
+
+    def fit(self, samples: List[Sample]) -> "BaseDetector":
+        return self
+
+    def predict(self, s: Sample) -> float:
+        """Return a scalar 'hallucination score', higher = more likely hallucination."""
+        raise NotImplementedError
+
+    def predict_many(self, samples: List[Sample]) -> np.ndarray:
+        return np.array([self.predict(s) for s in samples], dtype=np.float32)
+
+
+# ---------------------------
+# 1) p(True)
+# ---------------------------
+
+class PTrueDetector(BaseDetector):
+    """
+    Prompts the model to self-report probability that the answer is true.
+    You must pass a callable: get_p_true(question, answer)->float in [0,1].
+    Score is 1 - p_true (higher => more hallucination).
+    """
+    name = "p(True)"
+
+    def __init__(self, get_p_true: Optional[Callable[[str, str], float]] = None):
+        self.get_p_true = get_p_true
+
+    def predict(self, s: Sample) -> float:
+        if s.gen.self_prob_true is not None:
+            p_true = float(s.gen.self_prob_true)
+        elif self.get_p_true is not None:
+            p_true = float(self.get_p_true(s.question, s.gen.text))
         else:
-            ws.append(1.0)
-    return np.array(ws, dtype=np.float32)
+            # fallback: monotonic map from perplexity -> pseudo p_true
+            ppx = _perplexity(s.gen.logprobs)
+            p_true = 1.0 / (1.0 + math.log1p(ppx))
+        p_true = max(0.0, min(1.0, p_true))
+        return 1.0 - p_true
 
-def run_mars(entries, tok, model, args):
-    scores, labels = [], []
-    for e in entries:
-        q, p = e["q"], e["pred"]
-        prompt = f"Q: {q}\nA:"
-        device = _device(model)
-        with torch.inference_mode():
-            ids_q = tok(prompt, return_tensors="pt").to(device).input_ids
-            ids_all = tok(prompt + " " + p, return_tensors="pt").to(device).input_ids
-            loc = ids_all.shape[1] - (tok(" " + p, return_tensors="pt").input_ids.shape[1])
-            seq = ids_all
-            out = model(seq)
-            logp = F.log_softmax(out.logits[:, :-1, :], dim=-1)
-            y = seq[:, 1:]
-            token_logp = torch.gather(logp, 2, y.unsqueeze(-1)).squeeze(-1)[0]
-            gen_logp = token_logp[loc-1:]
-            gen_toks = tok.convert_ids_to_tokens(seq[0, loc:].tolist())
-            w = _content_weight(gen_toks[:gen_logp.shape[0]])
-            if w.sum() == 0:
-                scores.append(float(gen_logp.mean().item()))
-            else:
-                s = (torch.tensor(w, device=device) * gen_logp).sum() / torch.tensor(w.sum(), device=device)
-                scores.append(float(s.item()))
-        labels.append(int(e["label"]))
-    return scores, labels
 
-def run_mars_se(entries, tok, model, args):
-    alpha = 0.5
-    s1, _ = run_mars(entries, tok, model, args)
-    s2, _ = run_se(entries, tok, model, args)
-    scores = [float(alpha*s1[i] + (1.0-alpha)*s2[i]) for i in range(len(entries))]
-    labels = [int(e["label"]) for e in entries]
-    return scores, labels
+# ---------------------------
+# 2) Perplexity
+# ---------------------------
 
-class _LinearProbe(nn.Module):
-    def __init__(self, d):
-        super().__init__()
-        self.fc = nn.Linear(d, 1)
-    def forward(self, x):
-        return self.fc(x)
+class PerplexityDetector(BaseDetector):
+    """Score = normalized perplexity (higher = more hallucination)."""
+    name = "Perplexity"
 
-class _SAPLMAProbe(nn.Module):
-    def __init__(self, d):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(d, 512), nn.ReLU(),
-            nn.Linear(512, 256), nn.ReLU(),
-            nn.Linear(256, 128), nn.ReLU(),
-            nn.Linear(128, 1)
-        )
-    def forward(self, x):
-        return self.net(x)
+    def predict(self, s: Sample) -> float:
+        return float(_perplexity(s.gen.logprobs))
 
-def run_ccs(entries, tok, model, args):
-    layer = getattr(args, "hidden_layer", 12)
-    base = []
-    for e in entries:
-        v = _last_token_states(e, layer)
-        if v is not None:
-            base.append(v)
-        else:
-            base.append(np.zeros(4096, dtype=np.float32))
-    base = np.stack(base)
-    pert = np.copy(base)
-    x = np.concatenate([base, pert], 0)
-    y = np.array([int(e["label"]) for e in entries] + [int(e["label"]) for e in entries], dtype=np.float32)
-    d = x.shape[1]
-    probe = _LinearProbe(d).to(_device(model))
-    opt = torch.optim.Adam(probe.parameters(), lr=getattr(args, "lr", 1e-3))
-    for _ in range(max(1, getattr(args, "epochs", 3))):
-        _bce_train_epoch(probe, opt, x, y)
-    scores = _infer_logits(probe, base)
-    labels = [int(e["label"]) for e in entries]
-    return [float(s) for s in scores], labels
 
-def run_saplma(entries, tok, model, args):
-    layer = getattr(args, "hidden_layer", 12)
-    feats, labels = [], []
-    for e in entries:
-        v = _last_token_states(e, layer)
-        if v is not None:
-            feats.append(v)
-        else:
-            feats.append(np.zeros(4096, dtype=np.float32))
-        labels.append(int(e["label"]))
-    x = np.stack(feats); y = np.array(labels, dtype=np.float32)
-    d = x.shape[1]
-    clf = _SAPLMAProbe(d).to(_device(model))
-    opt = torch.optim.Adam(clf.parameters(), lr=getattr(args, "lr", 1e-3))
-    for _ in range(max(1, getattr(args, "epochs", 3))):
-        _bce_train_epoch(clf, opt, x, y)
-    scores = _infer_logits(clf, x)
-    return [float(s) for s in scores], labels
+# ---------------------------
+# 3) Semantic Entropy (SE)
+# ---------------------------
 
-class _HaloProbe(nn.Module):
-    def __init__(self, d):
-        super().__init__()
-        self.net = nn.Sequential(nn.Linear(d,256), nn.ReLU(), nn.Linear(256,1))
-    def forward(self, x): 
-        return self.net(x)
+class SEDetector(BaseDetector):
+    """
+    Approximates Semantic Entropy by clustering multiple generations in embedding space.
+    Provide embed_fn: List[str] -> np.ndarray (M x d) for best results.
+    """
+    name = "SE"
 
-def run_haloscope(entries, tok, model, args):
-    layer = getattr(args, "hidden_layer", 12)
-    feats = []
-    for e in entries:
-        v = _last_token_states(e, layer)
-        if v is not None:
-            feats.append(v)
-        else:
-            feats.append(np.zeros(4096, dtype=np.float32))
-    x = np.stack(feats)
-    x_t = torch.tensor(x, dtype=torch.float32, device=_device(model))
-    with torch.inference_mode():
-        mu = x_t.mean(dim=0, keepdim=True)
-        cov = torch.cov((x_t - mu).T) + 1e-4*torch.eye(x_t.shape[1], device=_device(model))
-        inv = torch.inverse(cov)
-        m = ((x_t - mu) @ inv * (x_t - mu)).sum(-1)
-        m = (m - m.min())/(m.max()-m.min()+1e-8)
-        soft = 1.0 - m
-        y0 = (soft > soft.median()).float().cpu().numpy()
-    d = x.shape[1]
-    probe = _HaloProbe(d).to(_device(model))
-    opt = torch.optim.Adam(probe.parameters(), lr=getattr(args, "lr", 1e-3))
-    _bce_train_epoch(probe, opt, x, y0)
-    scores = _infer_logits(probe, x)
-    labels = [int(e["label"]) for e in entries]
-    return [float(s) for s in scores], labels
+    def __init__(self, embed_fn: Optional[Callable[[List[str]], np.ndarray]] = None, dist_thresh: float = 0.25):
+        self.embed_fn = embed_fn
+        self.dist_thresh = dist_thresh
 
-REGISTRY = {
-    "p_true": run_p_true,
-    "perplexity": run_perplexity,
-    "se": run_se,
-    "mars": run_mars,
-    "mars_se": run_mars_se,
-    "ccs": run_ccs,
-    "saplma": run_saplma,
-    "haloscope": run_haloscope,
-}
+    def predict(self, s: Sample) -> float:
+        gens = s.gens if s.gens else [s.gen]
+        texts = [g.text for g in gens]
+        E = _simple_embed(texts, self.embed_fn)
+        entropy, _ = _cluster_entropy_from_embeds(E, thresh=self.dist_thresh)
+        # Entropy is already "higher = more disagreement/instability" -> more hallucination.
+        return float(entropy)
+
+
+# ---------------------------
+# 4) MARS (Meaning-aware Response Scoring)
+# ---------------------------
+
+class MARSDetector(BaseDetector):
+    """
+    A pragmatic approximation:
+      - token-level surprise = -log p_t
+      - sentence-level weight = semantic centrality of this generation among peers
+      - score = centrality * avg surprise
+    For a faithful reproduction, replace `semantic_centrality` with the paper’s method.
+    """
+    name = "MARS"
+
+    def __init__(self, embed_fn: Optional[Callable[[List[str]], np.ndarray]] = None):
+        self.embed_fn = embed_fn
+
+    def _centrality(self, s: Sample) -> float:
+        if not s.gens:
+            return 1.0
+        texts = [g.text for g in s.gens]
+        E = _simple_embed(texts, self.embed_fn)
+        sims = _pairwise_cosine(E)
+        # centrality of the primary generation relative to the bag
+        idx0 = 0  # assume s.gen is first in s.gens if present; else use own text appended
+        cent = float(np.mean(sims[idx0]))
+        # map from [-1,1] to [0,1]
+        return (cent + 1.0) / 2.0
+
+    def predict(self, s: Sample) -> float:
+        nll = _length_norm_nll(s.gen.logprobs)
+        cent = self._centrality(s)
+        # score higher = more hallucination => use cent-weighted NLL
+        return float(cent * nll)
+
+
+# ---------------------------
+# 5) MARS-SE (MARS + SE)
+# ---------------------------
+
+class MARSSEDetector(BaseDetector):
+    name = "MARS-SE"
+
+    def __init__(self, embed_fn: Optional[Callable[[List[str]], np.ndarray]] = None, se_weight: float = 1.0):
+        self.mars = MARSDetector(embed_fn=embed_fn)
+        self.se = SEDetector(embed_fn=embed_fn)
+        self.se_weight = se_weight
+
+    def predict(self, s: Sample) -> float:
+        mars = self.mars.predict(s)
+        se = self.se.predict(s)
+        return float(mars + self.se_weight * se)
+
+
+# ---------------------------
+# 6) CCS (linear probe on internal states)
+# ---------------------------
+
+class CCSDetector(BaseDetector):
+    """
+    Simple logistic regression probe on last-token hidden states.
+    You can pass which token index to use via token_selector; default uses last token.
+    """
+    name = "CCS"
+
+    def __init__(self, token_selector: Optional[Callable[[Generation], int]] = None, lr=0.1, epochs=200, reg=1e-4):
+        self.token_selector = token_selector or (lambda g: len(g.tokens) - 1)
+        self.w: Optional[np.ndarray] = None
+        self.b: float = 0.0
+        self.lr = lr
+        self.epochs = epochs
+        self.reg = reg
+
+    def fit(self, samples: List[Sample]) -> "CCSDetector":
+        X, y = [], []
+        for s in samples:
+            if s.label is None or s.gen.hidden is None:
+                continue
+            idx = self.token_selector(s.gen)
+            h = s.gen.hidden[idx]  # D
+            X.append(h)
+            y.append(int(s.label))
+        if not X:
+            return self
+
+        X = np.stack(X, axis=0).astype(np.float32)  # N x D
+        y = np.array(y, dtype=np.float32)  # N
+
+        # init
+        N, D = X.shape
+        self.w = np.zeros(D, dtype=np.float32)
+        self.b = 0.0
+
+        # simple gradient descent
+        for _ in range(self.epochs):
+            logits = X @ self.w + self.b  # N
+            probs = 1.0 / (1.0 + np.exp(-logits))
+            grad_w = (X.T @ (probs - y)) / N + self.reg * self.w
+            grad_b = float(np.mean(probs - y))
+            self.w -= self.lr * grad_w
+            self.b -= self.lr * grad_b
+        return self
+
+    def predict(self, s: Sample) -> float:
+        if self.w is None or s.gen.hidden is None or len(s.gen.hidden) == 0:
+            # fallback: use perplexity
+            return float(_perplexity(s.gen.logprobs))
+        idx = self.token_selector(s.gen)
+        h = s.gen.hidden[idx]
+        z = float(np.dot(h, self.w) + self.b)
+        p = 1.0 / (1.0 + math.exp(-z))
+        return float(p)  # interpret as hallucination probability
+
+
+# ---------------------------
+# 7) SAPLMA (MLP probe with labels)
+# ---------------------------
+
+class SAPLMADetector(BaseDetector):
+    """
+    Small two-layer MLP with ReLU on last-token hidden states.
+    """
+    name = "SAPLMA"
+
+    def __init__(self, token_selector: Optional[Callable[[Generation], int]] = None,
+                 hidden_dim: int = 256, lr: float = 1e-2, epochs: int = 300, reg: float = 1e-4):
+        self.token_selector = token_selector or (lambda g: len(g.tokens) - 1)
+        self.W1: Optional[np.ndarray] = None
+        self.b1: Optional[np.ndarray] = None
+        self.W2: Optional[np.ndarray] = None
+        self.b2: float = 0.0
+        self.hdim = hidden_dim
+        self.lr = lr
+        self.epochs = epochs
+        self.reg = reg
+
+    def fit(self, samples: List[Sample]) -> "SAPLMADetector":
+        X, y = [], []
+        for s in samples:
+            if s.label is None or s.gen.hidden is None:
+                continue
+            idx = self.token_selector(s.gen)
+            X.append(s.gen.hidden[idx])
+            y.append(int(s.label))
+        if not X:
+            return self
+
+        X = np.stack(X, axis=0).astype(np.float32)
+        y = np.array(y, dtype=np.float32)
+
+        N, D = X.shape
+        rng = np.random.default_rng(0)
+        self.W1 = (rng.standard_normal((D, self.hdim)).astype(np.float32) / math.sqrt(D))
+        self.b1 = np.zeros(self.hdim, dtype=np.float32)
+        self.W2 = (rng.standard_normal((self.hdim, 1)).astype(np.float32) / math.sqrt(self.hdim))
+        self.b2 = 0.0
+
+        for _ in range(self.epochs):
+            # forward
+            h1 = np.maximum(0.0, X @ self.W1 + self.b1)     # N x H
+            logits = (h1 @ self.W2).reshape(-1) + self.b2    # N
+            probs = 1.0 / (1.0 + np.exp(-logits))
+            # loss: BCE + L2
+            # grad
+            dlogits = (probs - y) / N                        # N
+            dW2 = h1.T @ dlogits.reshape(-1, 1) + self.reg * self.W2
+            db2 = float(np.sum(dlogits))
+            dh1 = dlogits.reshape(-1, 1) @ self.W2.T         # N x H
+            dh1[h1 <= 1e-12] = 0.0
+            dW1 = X.T @ dh1 + self.reg * self.W1
+            db1 = np.sum(dh1, axis=0)
+
+            # update
+            self.W2 -= self.lr * dW2
+            self.b2 -= self.lr * db2
+            self.W1 -= self.lr * dW1
+            self.b1 -= self.lr * db1
+        return self
+
+    def predict(self, s: Sample) -> float:
+        if self.W1 is None or s.gen.hidden is None or len(s.gen.hidden) == 0:
+            return float(_perplexity(s.gen.logprobs))
+        idx = self.token_selector(s.gen)
+        x = s.gen.hidden[idx]
+        h1 = np.maximum(0.0, x @ self.W1 + self.b1)
+        z = float(h1 @ self.W2.reshape(-1) + self.b2)
+        p = 1.0 / (1.0 + math.exp(-z))
+        return float(p)
+
+
+# ---------------------------
+# 8) HaloScope (unsupervised membership score -> label/score)
+# ---------------------------
+
+class HaloScopeDetector(BaseDetector):
+    """
+    Lightweight surrogate of HaloScope idea:
+      - learn a reference distribution of hidden states from *unlabeled* generations
+      - score = Mahalanobis distance of last-token hidden to the reference (higher => more 'unusual')
+    You can call fit() without labels; pass many samples to learn the reference stats.
+    """
+    name = "HaloScope"
+
+    def __init__(self, token_selector: Optional[Callable[[Generation], int]] = None, eps: float = 1e-3):
+        self.token_selector = token_selector or (lambda g: len(g.tokens) - 1)
+        self.mu: Optional[np.ndarray] = None
+        self.Sinv: Optional[np.ndarray] = None
+        self.eps = eps
+
+    def fit(self, samples: List[Sample]) -> "HaloScopeDetector":
+        X = []
+        for s in samples:
+            if s.gen.hidden is None or len(s.gen.hidden) == 0:
+                continue
+            idx = self.token_selector(s.gen)
+            X.append(s.gen.hidden[idx])
+        if not X:
+            return self
+        X = np.stack(X, axis=0).astype(np.float32)
+        self.mu = np.mean(X, axis=0)
+        # shrinkage covariance inverse
+        Xc = X - self.mu
+        cov = (Xc.T @ Xc) / max(1, (X.shape[0] - 1))
+        cov += self.eps * np.eye(cov.shape[0], dtype=np.float32)
+        self.Sinv = np.linalg.inv(cov)
+        return self
+
+    def predict(self, s: Sample) -> float:
+        if self.mu is None or self.Sinv is None or s.gen.hidden is None or len(s.gen.hidden) == 0:
+            return float(_perplexity(s.gen.logprobs))
+        idx = self.token_selector(s.gen)
+        x = s.gen.hidden[idx].astype(np.float32)
+        d = x - self.mu
+        md2 = float(d @ self.Sinv @ d)  # Mahalanobis^2
+        return md2
+
+
+# ---------------------------
+# Convenience factory & evaluation
+# ---------------------------
+
+def make_detector(name: str, **kwargs) -> BaseDetector:
+    name = name.lower()
+    if name in ["p(true)", "ptrue", "p_true"]:
+        return PTrueDetector(**kwargs)
+    if name in ["perplexity", "ppx"]:
+        return PerplexityDetector()
+    if name in ["se", "semantic-entropy"]:
+        return SEDetector(**kwargs)
+    if name in ["mars"]:
+        return MARSDetector(**kwargs)
+    if name in ["mars-se", "marsse"]:
+        return MARSSEDetector(**kwargs)
+    if name in ["ccs"]:
+        return CCSDetector(**kwargs)
+    if name in ["saplma"]:
+        return SAPLMADetector(**kwargs)
+    if name in ["haloscope", "halo"]:
+        return HaloScopeDetector(**kwargs)
+    raise ValueError(f"Unknown detector: {name}")
+
+
+def auroc(scores: np.ndarray, labels: np.ndarray) -> float:
+    """Simple AUROC implementation (no sklearn)."""
+    # labels: 1 = positive(hallucinated), 0 = negative(correct)
+    order = np.argsort(scores)
+    sorted_y = labels[order]
+    # compute rank-sum AUROC
+    # U = sum of ranks for positives - n_pos*(n_pos+1)/2
+    n = len(sorted_y)
+    ranks = np.arange(1, n + 1)
+    n_pos = int(np.sum(sorted_y))
+    n_neg = n - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return 0.5
+    rank_sum_pos = int(np.sum(ranks[sorted_y == 1]))
+    U = rank_sum_pos - n_pos * (n_pos + 1) / 2.0
+    return float(U / (n_pos * n_neg + 1e-12))
+
+
+# Example usage (pseudo):
+# train, test = [...]
+# det = make_detector("saplma").fit(train)
+# scores = det.predict_many(test)
+# print("AUROC=", auroc(scores, np.array([s.label for s in test], dtype=np.int32)))
