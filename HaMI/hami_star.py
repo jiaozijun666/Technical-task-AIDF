@@ -17,7 +17,7 @@ def _smooth(s):
     d = s[1:]-s[:-1]
     return (d*d).mean()
 
-def run(entries, tok, model, args):
+def run_hami_star(entries, tok, model, args):
     device = model.device
     hl = getattr(args,"hidden_layer",0)
     rk = getattr(args,"rk",0.1)

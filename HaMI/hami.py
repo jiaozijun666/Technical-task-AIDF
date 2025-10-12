@@ -26,7 +26,7 @@ def _avg_nll(tok, model, q, a):
     out = model(ids, labels=tgt)
     return float(out.loss.item())
 
-def run(entries, tok, model, args):
+def run_hami(entries, tok, model, args):
     device = model.device
     hl = getattr(args,"hidden_layer",0)
     rk = getattr(args,"rk",0.1)
