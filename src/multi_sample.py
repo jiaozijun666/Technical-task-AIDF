@@ -10,6 +10,7 @@ CONFIG = {
     "OUTPUT_PATH": "data/squad_multi.json",
     "K": 5,
     "OPENAI_MODEL": "gpt-4.1",
+    "TEMPERATURE": 0.5,
     "TOP_P": 0.95,
     "MAX_TOKENS": 256,
     "LIMIT": 0,

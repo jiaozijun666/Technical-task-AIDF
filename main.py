@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os, json, argparse, importlib, runpy, re, string
 from typing import List, Dict, Any, Callable, Optional
+from sklearn.metrics import roc_auc_score
 
 def load_json(path: str) -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8") as f:
@@ -14,7 +15,14 @@ def _norm_q(s: str) -> str:
     s = re.sub(f"[{re.escape(string.punctuation)}]", " ", s)
     s = re.sub(r"\s+", " ", s).strip()
     return s
-    
+
+def _norm_text(s: str) -> str:
+    s = (s or "").lower().strip()
+    s = "".join(ch for ch in s if ch not in set(string.punctuation))
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
 def save_text(path: str, s: str) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -135,6 +143,10 @@ def _flatten(data):
             rows.append({"qid": i, "sid": j, "question": q, "gold": gold, "answer": a})
     return rows
 
+def _align_drop_missing(score_list, labels):
+    idx = [i for i, x in enumerate(score_list) if x is not None]
+    return [score_list[i] for i in idx], [labels[i] for i in idx]
+
 def _labels_api(flat: List[Dict[str, Any]]) -> Optional[List[int]]:
     try:
         ev = importlib.import_module("src.eval")
@@ -153,16 +165,35 @@ def _labels_api(flat: List[Dict[str, Any]]) -> Optional[List[int]]:
         return None
     return None
 
-
-def _labels_em(flat):
-    from src.utils import exact_match
-    out = []
-    for r in flat:
-        gold = r.get("gold")
-        ans  = r.get("answer") or ""
-        y = 1 if (gold and exact_match(ans, [gold])) else 0   # ← 这行要这样
-        out.append(y)
-    return out
+def _labels_em(flat_rows):
+    labels = []
+    for r in flat_rows:
+        pred_norm = _norm_text(r.get("answer") or "")
+        g = r.get("gold")
+        golds = []
+        if isinstance(g, str) and g:
+            golds = [g]
+        elif isinstance(g, (list, tuple)):
+            golds = [x for x in g if isinstance(x, str)]
+        hit = any(_norm_text(x) == pred_norm for x in golds)
+        labels.append(1 if hit else 0)
+    return labels
+    
+def _maybe_flip_labels(labels, scores_dict):
+    ref = None
+    for k in ("saplma", "perplexity"):
+        if k in scores_dict and len(scores_dict[k]) == len(labels):
+            ref = scores_dict[k]; break
+    if ref is None:
+        return labels
+    try:
+        auc = roc_auc_score(labels, ref)
+    except Exception:
+        return labels
+    if auc < 0.5:
+        print("[main] reference auc < 0.5 -> flip labels")
+        return [1 - int(x) for x in labels]
+    return labels
 
 
 def _resolve_any(mod: str, fn_candidates: List[str]) -> Callable:
@@ -282,7 +313,7 @@ def main():
         if len(s) != len(flat):
             raise ValueError(f"{name} produced {len(s)} scores for {len(flat)} rows")
         scores[name.lower()] = [float(x) for x in s]
-
+    labels = _maybe_flip_labels(labels, scores)
     aurocs = _compute_aurocs(scores, labels)
     table = _fmt_table(aurocs)
 

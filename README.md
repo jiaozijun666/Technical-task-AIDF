@@ -47,6 +47,8 @@ source .venv/bin/activate
 ```
 Download the model Llama-3.1-8B to environment
 ```{bash}
+pip install llama-stack
+llama model download --source meta --model-id  Llama3.1-8B
 # Download ModelScope
 source /workspace/Technical-tesk-AIDF/.venv/bin/active 2>/dev/null || true
 pip install modelscope transoformers accelerate bitsandbytes sentencepiece
@@ -79,10 +81,6 @@ pip install -r requirements.txt
 
 Running the piplines in following order
 ```{python}
-python src/process_data.py
-python src/multi_sample.py
-python src/final_select.py
-python src/random_pairs.py
-python src/refined_set.py
-python main.py  
+MULTI_LIMIT=50 python main.py
+#You can set the number as you like, if you just run python main.py, it will takes longer time because the multi_sample.py process will generate 2000 pairs of data training 5 times. Reduce the number to reduce the running time, but would lead to uncertainty to the result.  
 ```
