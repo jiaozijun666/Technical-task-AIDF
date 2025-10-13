@@ -1,56 +1,111 @@
-"""
-prompt.py — Unified prompt templates for all baselines and HaMI variants
-"""
+# src/prompt.py
+# Prompts aligned with the paper:
+# - Generation: zero-shot QA without context
+# - Evaluation (GPT-4.1): label correctness with a strict JSON output
+# Labels: 0 = correct/trustworthy, 1 = hallucinated/incorrect
 
-def build_eval_prompt(question, answers=None):
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Optional
+
+
+# ---------- Generation (no-context, zero-shot) ----------
+# Figure 6 style: “QA without context, answer concisely.”
+# The temperature=0.5 setting should be enforced in the calling code.
+GEN_ZERO_SHOT = (
+    "Answer the question concisely. Do not include explanations unless necessary.\n\n"
+    "Question:\n{question}\n\n"
+    "Answer:"
+)
+
+def build_generation_prompt(question: str) -> str:
     """
-    For general evaluation or generation tasks.
-    Used by: multi_sample.py, semantic_entropy.py, etc.
+    Build the zero-shot, context-free QA prompt used to elicit an answer.
+    Paper setting: no context, concise answer. Temperature controlled by caller.
     """
-    prompt = f"Question: {question.strip()}\n"
-    if answers:
-        prompt += "\n".join([f"Answer {i+1}: {a}" for i, a in enumerate(answers)])
-        prompt += "\nPlease evaluate which answer is more factually correct."
-    else:
-        prompt += "Please provide an accurate, factual, and concise answer."
-    return prompt.strip()
+    q = (question or "").strip()
+    return GEN_ZERO_SHOT.format(question=q)
 
 
-def build_hami_prompt(question, pos_answer, neg_answer):
+# ---------- Evaluation (GPT-4.1) ----------
+# Figure 7 style: ask GPT-4.1 to judge correctness based on gold answer (if provided)
+# and its own knowledge. Output strictly formatted JSON to enable programmatic parsing.
+
+EVAL_PRIMARY_SYS = (
+    "You are a strict evaluator of factual correctness for short QA outputs."
+)
+
+EVAL_PRIMARY_USER = (
+    "Determine whether the model's answer is factually correct.\n"
+    "Use the gold answer if provided; otherwise rely on your own knowledge.\n\n"
+    "Rules:\n"
+    "1) Output strictly in JSON with keys: label, reason.\n"
+    "2) label MUST be 0 or 1 only.\n"
+    "   - 0 = correct / trustworthy\n"
+    "   - 1 = hallucinated / incorrect\n"
+    "3) reason MUST be a short, evidence-based justification (one or two sentences).\n"
+    "4) Be conservative: if the answer asserts an incorrect fact or contradicts the gold, label=1.\n\n"
+    "Question:\n{question}\n\n"
+    "Model Answer:\n{answer}\n\n"
+    "Gold Answer (may be empty):\n{gold}\n\n"
+    "Now produce ONLY the JSON object (no prose)."
+)
+
+def build_eval_primary_prompt(question: str, answer: str, gold: Optional[str]) -> tuple[str, str]:
     """
-    HaMI prompt — used for adaptive token selection with uncertainty weighting.
-    The model is expected to form internal factual reasoning representations.
+    First-pass evaluation prompt for GPT-4.1.
+    Returns (system_prompt, user_prompt).
     """
-    return f"""You are a knowledgeable fact-verification expert.
-
-Question: {question.strip()}
-
-Candidate Answer A (possibly correct): {pos_answer.strip()}
-Candidate Answer B (possibly hallucinated): {neg_answer.strip()}
-
-Reason internally about the factual alignment between the question and each answer.
-Return your internal representation (hidden states), not a textual answer.
-"""
+    q = (question or "").strip()
+    a = (answer or "").strip()
+    g = (gold or "").strip() if gold is not None else ""
+    return EVAL_PRIMARY_SYS, EVAL_PRIMARY_USER.format(question=q, answer=a, gold=g)
 
 
-def build_hami_star_prompt(question, pos_answer, neg_answer):
+# In the paper, items judged positive (hallucinated) are re-checked once; if the second
+# judgment disagrees, the item is discarded. This prompt performs that re-judgment.
+EVAL_REJUDGE_SYS = (
+    "You are re-judging factual correctness for QA outputs. Be careful and consistent."
+)
+
+EVAL_REJUDGE_USER = (
+    "This item was previously labeled as hallucinated/incorrect (label=1). "
+    "Re-evaluate carefully. If you agree it is incorrect, keep label=1; "
+    "if you are convinced it is correct, use label=0.\n\n"
+    "Rules:\n"
+    "1) Output strictly in JSON with keys: label, reason.\n"
+    "2) label MUST be 0 or 1 only.\n"
+    "   - 0 = correct / trustworthy\n"
+    "   - 1 = hallucinated / incorrect\n"
+    "3) reason MUST briefly justify your decision.\n\n"
+    "Question:\n{question}\n\n"
+    "Model Answer:\n{answer}\n\n"
+    "Gold Answer (may be empty):\n{gold}\n\n"
+    "Now produce ONLY the JSON object."
+)
+
+def build_eval_rejudge_prompt(question: str, answer: str, gold: Optional[str]) -> tuple[str, str]:
     """
-    HaMI* prompt — ablation version without uncertainty weighting.
-    Only focuses on factual consistency.
+    Second-pass re-judgment prompt for items initially labeled positive (label=1).
+    Returns (system_prompt, user_prompt).
     """
-    return f"""Question: {question.strip()}
-
-Answer A: {pos_answer.strip()}
-Answer B: {neg_answer.strip()}
-
-Assess which answer is factually consistent with the question.
-Return only the internal representation, not a textual response.
-"""
+    q = (question or "").strip()
+    a = (answer or "").strip()
+    g = (gold or "").strip() if gold is not None else ""
+    return EVAL_REJUDGE_SYS, EVAL_REJUDGE_USER.format(question=q, answer=a, gold=g)
 
 
-def build_pairwise_prompt(question, pos_answer, neg_answer):
+# ---------- Optional small helper ----------
+@dataclass
+class EvalInput:
+    question: str
+    answer: str
+    gold: Optional[str] = None
+
+def build_eval_prompts(e: EvalInput, rejudge: bool = False) -> tuple[str, str]:
     """
-    Simple pairwise comparison prompt.
-    Used in baselines such as Hami prompt ablations or contrastive setups.
+    Convenience wrapper to get (system, user) for primary or re-judge evaluation.
     """
-    return f"Q: {question}\nA1: {pos_answer}\nA2: {neg_answer}\nWhich answer is more factually accurate?"
+    if rejudge:
+        return build_eval_rejudge_prompt(e.question, e.answer, e.gold)
+    return build_eval_primary_prompt(e.question, e.answer, e.gold)

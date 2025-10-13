@@ -1,8 +1,7 @@
 # Technical-task-AIDF
 Pre-project Task - Hallucination Detection
 
-All script runs on google colab or kaggle notebook with model meta-llama/Llama-3.2-1B-Instruct for test and model meta-llama/Llama-3.1-8B-Instruct for whole.
-
+All files run on a NVIDIA A100 GPU rented from vest.ai with model LlaMa-3.1-8B requested from Meta official website.
 ### Repository Structure
 ```
 Technical-task-AIDF/
