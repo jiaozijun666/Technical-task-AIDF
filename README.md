@@ -67,6 +67,11 @@ PY
 ls -lh /workspace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct | head
 du -sh /worksoace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct
 ```
+输入openai api key
+```{bash}
+pip install --upgrade openai
+export OPENAI_API_KEY="sk-xxxxxxxx"
+```
 
 Downloading the necessary packages
 ```{bash}
