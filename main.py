@@ -1,175 +1,296 @@
-# main.py — plug to your src/ pipeline
-# Works with data/squad_multi.json / squad_refined.json / quadru_pairs.json
-# Baselines supported out-of-the-box: SE, MARS, MARS-SE
-# Optional: if you later add hidden/label/logprobs, it also runs CCS/SAPLMA/HaloScope/Perplexity/p(True)
+# main.py
+from __future__ import annotations
+import os, json, argparse, importlib, runpy, re, string
+from typing import List, Dict, Any, Callable, Optional
 
-import os, sys, json, argparse, math
-from typing import List, Dict, Any, Optional
-import numpy as np
-
-# ----- import our baselines (the baseline.py I gave you) -----
-from baseline import Sample, Generation, make_detector, auroc
-
-# ======== IO utils ========
 def load_json(path: str) -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+    assert isinstance(data, list)
+    return data
 
-def detect_schema_and_to_samples(obj: Any):
-    """
-    Accepts either:
-      - list[ {question, gold, generations:[str,...]} ]  (multi/refined/final_select)
-      - list[ {qid, question, text/answer/response, ...} ]  (future single-gen rows)
-    Converts to List[Sample] (each Sample contains gens[])
-    """
-    samples: List[Sample] = []
-    ids: List[str] = []
-    labels: List[Optional[int]] = []
+def _norm_q(s: str) -> str:
+    s = (s or "").lower().strip()
+    s = re.sub(f"[{re.escape(string.punctuation)}]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+    
+def save_text(path: str, s: str) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(s)
 
-    if isinstance(obj, list) and obj and "generations" in obj[0]:
-        # one item = one question with multiple generations (your current files)
-        for i, it in enumerate(obj):
-            gens_txt = it.get("generations", [])
-            gens = [Generation(text=t, tokens=[], logprobs=[]) for t in gens_txt]
-            if not gens:
-                continue
-            s = Sample(question=it.get("question",""), gold=it.get("gold"), gen=gens[0], gens=gens, label=it.get("label"))
-            samples.append(s)
-            ids.append(str(i))
-            labels.append(it.get("label"))
-        return samples, ids, labels
+def save_json(path: str, obj: Any) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
 
-    # fallback: assume flat rows (each row = one generation), group by qid
-    from collections import defaultdict
-    groups = defaultdict(list)
-    for r in obj:
-        qid = str(r.get("qid", r.get("question_id", r.get("id", ""))))
-        if not qid:
-            qid = str(id(r))
-        groups[qid].append(r)
+def _truncate_json_list(path: str, n: int) -> int:
+    if n <= 0: 
+        return 0
+    import json
+    if not os.path.exists(path):
+        return 0
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if not isinstance(data, list):
+        return 0
+    orig = len(data)
+    if orig <= n:
+        return orig
+    data = data[:n]
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"[main] truncated {path}: {orig} -> {len(data)}")
+    return len(data)
 
-    for qid, rows in groups.items():
-        gens = []
-        for r in rows:
-            text = r.get("answer", r.get("text", r.get("response", "")))
-            gens.append(Generation(text=text, tokens=r.get("tokens",[]), logprobs=r.get("logprobs",[])))
-        if not gens:
+def _env_int(name: str, default: int = 0) -> int:
+    v = os.getenv(name)
+    try:
+        return int(v) if v is not None else default
+    except Exception:
+        return default
+
+
+def _try_call(mod_name: str, fn_candidates: List[str] | None = None, kwargs: Dict[str, Any] | None = None) -> None:
+    kwargs = kwargs or {}
+    fn_candidates = fn_candidates or ["main", "run", "cli"]
+    try:
+        m = importlib.import_module(mod_name)
+        for fn in fn_candidates:
+            f = getattr(m, fn, None)
+            if callable(f):
+                print(f"[main] call {mod_name}.{fn}()")
+                f(**kwargs)
+                return
+        raise AttributeError("no callable in module")
+    except Exception:
+        script = os.path.join(*mod_name.split(".")) + ".py"
+        print(f"[main] exec script: {script}")
+        runpy.run_path(script, run_name="__main__")
+
+def _load_squad_gold(files=("data/squad_train.json", "data/squad_test.json")):
+    by_id, by_q = {}, {}
+    for p in files:
+        if not os.path.exists(p): 
             continue
-        s = Sample(question=rows[0].get("question",""), gold=rows[0].get("gold"), gen=gens[0], gens=gens, label=rows[0].get("label"))
-        samples.append(s)
-        ids.append(qid)
-        labels.append(rows[0].get("label"))
-    return samples, ids, labels
-
-# ======== Embeddings (two backends) ========
-def embed_tfidf(texts: List[str]) -> np.ndarray:
-    # simple hashed char-ngram like in baseline.py
-    dim = 512
-    V = np.zeros((len(texts), dim), dtype=np.float32)
-    for i, t in enumerate(texts):
-        for ch in t.lower():
-            idx = (ord(ch) * 1315423911) % dim
-            V[i, idx] += 1.0
-        n = np.linalg.norm(V[i]) + 1e-9
-        V[i] /= n
-    return V
-
-_HF_CACHE = {"tok": None, "model": None}
-def embed_hf(texts: List[str], model_name: str) -> np.ndarray:
-    # Uses your src/model_loader.py to get a causal LM, takes last hidden states mean-pooled
-    from core.model_loader import load_llm  # :contentReference[oaicite:4]{index=4}
-    import torch
-    global _HF_CACHE
-    if _HF_CACHE["tok"] is None:
-        tok, model = load_llm(model_name, eightbit=True, flash=True)
-        _HF_CACHE["tok"], _HF_CACHE["model"] = tok, model
-    tok, model = _HF_CACHE["tok"], _HF_CACHE["model"]
-
-    vecs = []
-    with torch.no_grad():
-        for t in texts:
-            ids = tok(t, return_tensors="pt", truncation=True, max_length=256)
-            ids = {k: v.to(model.device) for k, v in ids.items()}
-            out = model(**ids, output_hidden_states=True)
-            H = out.hidden_states[-1].squeeze(0)      # T x D
-            v = H.mean(dim=0).float().cpu().numpy()   # D
-            # L2 norm
-            n = np.linalg.norm(v) + 1e-9
-            vecs.append(v / n)
-    return np.stack(vecs, axis=0).astype(np.float32)
-
-# ======== Runner ========
-def run(baseline_names: List[str], data_path: str, out_dir: str, embed_backend: str, embed_model: str):
-    data = load_json(data_path)
-    samples, sample_ids, sample_labels = detect_schema_and_to_samples(data)
-
-    os.makedirs(out_dir, exist_ok=True)
-
-    # choose embedding function for SE/MARS/MARS-SE
-    if embed_backend == "hf":
-        def _embed(texts: List[str]) -> np.ndarray:
-            return embed_hf(texts, embed_model)
-    else:
-        def _embed(texts: List[str]) -> np.ndarray:
-            return embed_tfidf(texts)
-
-    # build detectors
-    detectors = []
-    for name in baseline_names:
-        low = name.lower()
-        if low in ["se", "semantic-entropy"]:
-            det = make_detector("se", embed_fn=_embed)
-        elif low in ["mars"]:
-            det = make_detector("mars", embed_fn=_embed)
-        elif low in ["mars-se", "marsse"]:
-            det = make_detector("mars-se", embed_fn=_embed)
-        else:
-            # you can request other baselines once you add fields; for now skip unknowns gracefully
-            print(f"[warn] '{name}' not supported without hidden/logprobs/labels; skipping.")
+        try:
+            arr = json.load(open(p))
+        except Exception:
             continue
-        detectors.append(det)
+        for ex in arr:
+            qid = ex.get("id") or ex.get("qid")
+            q   = ex.get("question") or ""
+            ans = ex.get("answers") or {}
+            if isinstance(ans, dict):
+                txts = ans.get("text") or ans.get("texts") or []
+                gold = txts[0] if isinstance(txts, list) and txts else (txts if isinstance(txts, str) else "")
+            else:
+                gold = ""
+            if qid: by_id[str(qid)] = gold
+            if q:   by_q[_norm_q(q)] = gold
+    return by_id, by_q
 
-    # eval pool = all samples (no labels in current files)
-    eval_pool, eval_ids, eval_labels = samples, sample_ids, [s.label for s in samples]
 
-    # run & save
-    summary = []
-    for det in detectors:
-        print(f"[run] {det.name} on {len(eval_pool)} samples  | embed={embed_backend}")
-        scores = det.predict_many(eval_pool)
+def _extract_gold(item):
+    g = item.get("gold")
+    if g:
+        return g
+    ans = item.get("answers") or item.get("answer") or {}
+    # SQuAD: {"answers":{"text":[...], "answer_start":[...]}}
+    if isinstance(ans, dict):
+        txt = ans.get("text") or ans.get("texts")
+        if isinstance(txt, list) and txt:
+            return txt[0]
+        if isinstance(txt, str):
+            return txt
+    return None
+    
+def _enrich_gold(flat: list[dict]) -> list[dict]:
+    by_id, by_q = _load_squad_gold()
+    changed = 0
+    for r in flat:
+        if r.get("gold"): 
+            continue
+        g = None
+        if "qid" in r and str(r["qid"]) in by_id:
+            g = by_id[str(r["qid"])]
+        if (not g) and r.get("question"):
+            g = by_q.get(_norm_q(r["question"]))
+        if g:
+            r["gold"] = g
+            changed += 1
+    if changed:
+        print(f"[eval] enriched gold for {changed} rows")
+    return flat
+    
+def _flatten(data):
+    rows = []
+    for i, item in enumerate(data):
+        q = item.get("question")
+        gold = _extract_gold(item)            # ← 新增：更稳地拿 gold
+        gens = item.get("generations") or item.get("gens") or []
+        for j, ans in enumerate(gens):
+            a = ans if isinstance(ans, str) else (ans.get("text") if isinstance(ans, dict) else "")
+            rows.append({"qid": i, "sid": j, "question": q, "gold": gold, "answer": a})
+    return rows
 
-        out_path = os.path.join(out_dir, f"{det.name}.scores.jsonl")
-        with open(out_path, "w", encoding="utf-8") as f:
-            for sid, sc, lab in zip(eval_ids, scores.tolist(), eval_labels):
-                obj = {"id": sid, "score": sc}
-                if lab is not None:
-                    obj["label"] = int(lab)
-                f.write(json.dumps(obj, ensure_ascii=False) + "\n")
-        print(f"[save] {out_path}")
+def _labels_api(flat: List[Dict[str, Any]]) -> Optional[List[int]]:
+    try:
+        ev = importlib.import_module("src.eval")
+        build = getattr(ev, "build_eval_jobs", None)
+        run = getattr(ev, "run_eval_jobs", None)
+        parse = getattr(ev, "parse_eval_results", None)
+        if not (build and run and parse):
+            return None
+        jobs = [{"question": r["question"], "answer": r["answer"], "gold": r.get("gold")} for r in flat]
+        reqs = build(jobs)
+        raw = run(reqs)
+        labels = parse(raw)
+        if isinstance(labels, list) and len(labels) == len(flat):
+            return labels
+    except Exception:
+        return None
+    return None
 
-        # AUROC only if labels exist
-        if any(l is not None for l in eval_labels):
-            labs = np.array([0 if l is None else int(l) for l in eval_labels], dtype=np.int32)
-            roc = auroc(scores, labs)
-            summary.append((det.name, roc))
+
+def _labels_em(flat):
+    from src.utils import exact_match
+    out = []
+    for r in flat:
+        gold = r.get("gold")
+        ans  = r.get("answer") or ""
+        y = 1 if (gold and exact_match(ans, [gold])) else 0   # ← 这行要这样
+        out.append(y)
+    return out
+
+
+def _resolve_any(mod: str, fn_candidates: List[str]) -> Callable:
+    m = importlib.import_module(mod)
+    for fn in fn_candidates:
+        f = getattr(m, fn, None)
+        if callable(f):
+            print(f"[main] using {mod}.{fn}")
+            return f
+    raise RuntimeError(f"missing callable in {mod}: tried {fn_candidates}")
+
+def get_scorers() -> List[tuple[str, Callable]]:
+    b = "baseline.baseline"
+    reg: List[tuple[str, Callable]] = []
+    reg.append(("se",          _resolve_any(b, ["run_se"])))
+    reg.append(("mars",        _resolve_any(b, ["run_mars"])))
+    reg.append(("mars-se",     _resolve_any(b, ["run_mars_se"])))
+    reg.append(("perplexity",  _resolve_any(b, ["run_perplexity"])))
+    reg.append(("p(true)",     _resolve_any(b, ["run_p_true"])))
+    reg.append(("ccs",         _resolve_any(b, ["run_ccs"])))
+    reg.append(("saplma",      _resolve_any(b, ["run_saplma"])))
+    reg.append(("haloscope",   _resolve_any(b, ["run_haloscope"])))
+    reg.append(("hami",        _resolve_any("HaMI.hami", ["run_hami","score_hami","hami","run","main"])))
+    reg.append(("hami star",   _resolve_any("HaMI.hami_star", ["run_hami_star","score_hami_star","hami_star","run","main"])))
+    return reg
+
+
+def _compute_aurocs(score_dict: Dict[str, List[float]], labels: List[int]) -> Dict[str, float]:
+    try:
+        m = importlib.import_module("src.metrics")
+        fn = getattr(m, "compute_aurocs", None)
+        if callable(fn):
+            return fn(score_dict, labels)
+        au = getattr(m, "auroc")
+    except Exception:
+        au = None
+    out: Dict[str, float] = {}
+    for k, scores in score_dict.items():
+        if au is None:
+            pairs = sorted(zip(scores, labels), key=lambda x: x[0])
+            pos = sum(labels); neg = len(labels) - pos
+            if pos == 0 or neg == 0:
+                out[k] = float("nan"); continue
+            rank_sum = 0; r = 1
+            for _, lab in pairs:
+                if lab == 1: rank_sum += r
+                r += 1
+            u = rank_sum - pos*(pos+1)/2
+            out[k] = round(u/(pos*neg), 6)
         else:
-            summary.append((det.name, float("nan")))
+            out[k] = round(float(au(scores, labels)), 6)
+    return out
 
-    print("\n=== Summary ===")
-    for n, a in summary:
-        msg = f"{a:.4f}" if not (isinstance(a, float) and math.isnan(a)) else "N/A"
-        print(f"{n:10s}  AUROC: {msg}")
+def _fmt_table(aurocs: Dict[str, float]) -> str:
+    order = ["p(true)","Perplexity","SE","MARS","MARS-SE","CCS","SAPLMA","HaloScope","HaMI* (Ours)","HaMI (Ours)"]
+    keymap = {"p(true)":"p(true)","Perplexity":"perplexity","SE":"se","MARS":"mars","MARS-SE":"mars-se","CCS":"ccs","SAPLMA":"saplma","HaloScope":"haloscope","HaMI* (Ours)":"hami star","HaMI (Ours)":"hami"}
+    col = "SQuAD"
+    lines = []
+    lines.append("┌" + "─"*38 + "┐")
+    lines.append(f"│ {'LLaMA-3.1-8B':^14} {col:^20} │")
+    lines.append("├" + "─"*38 + "┤")
+    for disp in order:
+        k = keymap[disp]
+        v = aurocs.get(k, float('nan'))
+        s = "nan" if v != v else f"{v:.3f}"
+        lines.append(f"│ {disp:<14} {s:>20} │")
+    lines.append("└" + "─"*38 + "┘")
+    return "\n".join(lines)
 
-# ======== CLI ========
-if __name__ == "__main__":
+def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True, help="Path to JSON produced by multi_sample/refined_set/final_select")
-    ap.add_argument("--out_dir", default="results", help="Output directory")
-    ap.add_argument("--baselines", default="se,mars,mars-se", help="Comma separated names")
-    ap.add_argument("--embed", choices=["tfidf","hf"], default="tfidf", help="Embedding backend for SE/MARS")
-    ap.add_argument("--embed_model", default="meta-llama/Llama-3.1-8B-Instruct",
-                    help="HF model name when --embed hf")
+    ap.add_argument("--data_dir", default="data")
+    ap.add_argument("--results_dir", default="results")
     args = ap.parse_args()
 
-    names = [n.strip() for n in args.baselines.split(",") if n.strip()]
-    run(names, args.data, args.out_dir, args.embed, args.embed_model)
+    os.makedirs(args.data_dir, exist_ok=True)
+    os.makedirs(args.results_dir, exist_ok=True)
+
+    print("[main] step 1/5: process_data")
+    _try_call("src.process_data")
+
+    limit = _env_int("MULTI_LIMIT", _env_int("MAIN_LIMIT", 0))
+    if limit > 0:
+        path = os.path.join(args.data_dir, "squad_train.json")
+        _truncate_json_list(path, limit)
+    
+    print("[main] step 2/5: multi_sample")
+    _try_call("src.multi_sample")
+
+    print("[main] step 3/5: final_select")
+    _try_call("src.final_select")
+
+    print("[main] step 4/5: random_pairs")
+    _try_call("src.random_pairs")
+
+    print("[main] step 5/5: refined_set")
+    _try_call("src.refined_set")
+
+    multi_path = os.path.join(args.data_dir, "squad_multi.json")
+    print(f"[main] load generations: {multi_path}")
+    data = load_json(multi_path)
+    flat = _flatten(data)
+    flat = _enrich_gold(flat) 
+
+    labels = _labels_api(flat)
+    if labels is None:
+        print("[main] eval labels: EM fallback")
+        labels = _labels_em(flat)
+    else:
+        print("[main] eval labels: API")
+
+    scorers = get_scorers()
+    scores: Dict[str, List[float]] = {}
+    for name, fn in scorers:
+        print(f"[main] scoring: {name}")
+        s = fn(flat)
+        if len(s) != len(flat):
+            raise ValueError(f"{name} produced {len(s)} scores for {len(flat)} rows")
+        scores[name.lower()] = [float(x) for x in s]
+
+    aurocs = _compute_aurocs(scores, labels)
+    table = _fmt_table(aurocs)
+
+    print("\n=== AUROC (SQuAD) ===")
+    print(table)
+    save_json(os.path.join(args.results_dir, "scores.json"), {"aurocs": aurocs})
+    save_text(os.path.join(args.results_dir, "table.txt"), table)
+    print(f"[main] saved results to {args.results_dir}")
+
+if __name__ == "__main__":
+    main()

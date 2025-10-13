@@ -21,18 +21,18 @@ Technical-task-AIDF/
 │   ├── data.py                               
 │   ├── final_select.py                       
 │   ├── model.py                             
-│   ├── multi_sample.py                       # Multi-answer generation using LLM
-│   ├── process_data.py                       # Preprocess and split dataset
-│   ├── prompt.py                             # Prompt templates for baseline generation
-│   ├── random_pairs.py                       # Construct random QA evaluation pairs
-│   ├── refined_set.py                        # Final dataset refinement
+│   ├── multi_sample.py                      
+│   ├── process_data.py                       
+│   ├── prompt.py                             
+│   ├── random_pairs.py                       
+│   ├── refined_set.py                        
 │   └── __init__.py
 │
-├── main.py                                   # General entry point for full pipeline
-├── requirements.txt                          # Dependency list
-├── LICENSE                                   # MIT License
-├── .gitignore                                # Ignore cache, models, and large outputs
-└── README.md                                 # Project documentation
+├── main.py                                   
+├── requirements.txt                         
+├── LICENSE                                   
+├── .gitignore                               
+└── README.md                                 
 ```
 ### Detailed process as follows:
 Clone the repository to Google Colab
@@ -49,7 +49,7 @@ Download the model Llama-3.1-8B to environment
 ```{bash}
 # Download ModelScope
 source /workspace/Technical-tesk-AIDF/.venv/bin/active 2>/dev/null || true
-pip install -U modelscope transoformers accelerate bitsandbytes sentencepiece
+pip install modelscope transoformers accelerate bitsandbytes sentencepiece
 
 # Transformer mode
 python - <<'PY'
