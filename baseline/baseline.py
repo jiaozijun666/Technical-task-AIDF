@@ -72,9 +72,6 @@ def _squad_norm(s: str) -> str:
     return s
 
 
-def _squad_tokens(s: str):
-    return _squad_norm(s).split()
-
 
 def _load_gold_cache():
     by_id, by_q = {}, {}
@@ -105,36 +102,6 @@ def _load_gold_cache():
 
 
 _GOLD_BY_ID, _GOLD_BY_Q = _load_gold_cache()
-
-
-def _pick_gold_from_row_or_cache(r: Dict[str, Any], group_majority: dict | None = None) -> str:
-    g = r.get("gold")
-    if g:
-        return g
-    qid = r.get("qid")
-    if qid is not None and str(qid) in _GOLD_BY_ID:
-        return _GOLD_BY_ID[str(qid)]
-
-    q = r.get("question")
-    if q:
-        g = _GOLD_BY_Q.get(_squad_norm(q), "")
-        if g:
-            return g
-    if group_majority is not None:
-        try:
-            g = group_majority[int(qid)]
-            if g:
-                return g
-        except Exception:
-            pass
-    ans = r.get("answers")
-    if isinstance(ans, dict):
-        txt = ans.get("text") or ans.get("texts")
-        if isinstance(txt, list) and txt:
-            return txt[0]
-        if isinstance(txt, str):
-            return txt
-    return ""
 
 
 

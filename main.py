@@ -2,7 +2,8 @@ from __future__ import annotations
 import os, json, argparse, importlib, runpy, re, string
 from typing import List, Dict, Any, Callable, Optional
 from sklearn.metrics import roc_auc_score
-from src.metrics import compute_aurocs_with_labels, score_p_c, score_p_t, score_p_s
+from src.metrics import compute_aurocs_with_labels
+
 def load_json(path: str) -> List[Dict[str, Any]]:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -265,7 +266,7 @@ def main():
     data = load_json(multi_path)
     flat = _flatten(data)
     flat = _enrich_gold(flat) 
-
+    
     labels = _labels_api(flat)
     if labels is None:
         print("[main] eval labels: EM fallback")
@@ -284,16 +285,6 @@ def main():
     labels = _maybe_flip_labels(labels, scores)
     aurocs = compute_aurocs_with_labels(scores, labels)
     table = _fmt_table(aurocs)
-
-
-    scores_pt = score_p_t(flat)
-    scores_pc = score_p_c(flat)
-    scores_ps = score_p_s(flat)
-    print(f"[uncertainty] n={len(flat)}  p_t[:5]={scores_pt[:5]}  p_c[:5]={scores_pc[:5]}  p_s[:5]={scores_ps[:5]}")
-    save_json(os.path.join(args.results_dir, "uncertainty_raw.json"),
-          {"p_t": scores_pt, "p_c": scores_pc, "p_s": scores_ps})
-    print(f"[uncertainty] saved -> {os.path.join(args.results_dir,'uncertainty_raw.json')}")
-   
 
     print("\n=== AUROC (SQuAD) ===")
     print(table)

@@ -6,20 +6,17 @@ from src.api import chat_complete
 
 CONFIG = {
     "INPUT_PATH": None,
-    "INPUT_CANDIDATES": ["data/questions_with_ctx.json","data/squad_train.json","data/squad_test.json"],
+    "INPUT_CANDIDATES": [...],
     "OUTPUT_PATH": "data/squad_multi.json",
-    "K": 5,
-    "OPENAI_MODEL": "gpt-4.1",
-    "TEMPERATURE": 0.5,
-    "TOP_P": 0.95,
+    "K": int(os.getenv("MULTI_K", "5")),
+    "OPENAI_MODEL": os.getenv("OPENAI_MODEL", "gpt-4.1"),
+    "TOP_P": float(os.getenv("MULTI_TOP_P", "0.95")),
     "MAX_TOKENS": 256,
-    "LIMIT": 0,
-    "SLEEP_BETWEEN_CALLS": 0.0,
-    "MAX_RETRIES": 3,
-    "BACKOFF_BASE_SEC": 1.0,
+    "LIMIT": int(os.getenv("MULTI_LIMIT", "0")),
     "MODEL_DIR": os.getenv("MULTI_MODEL_DIR", ""),
     "LOG_INTERVAL": int(os.getenv("MULTI_LOG_INTERVAL", "50")),
 }
+
 
 def _log(s: str) -> None:
     print(f"[multi] {s}")

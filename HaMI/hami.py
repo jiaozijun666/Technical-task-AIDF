@@ -1,10 +1,13 @@
 import os
 from typing import List, Dict, Any
 from collections import defaultdict
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+STRATEGY = os.getenv("HAMI_STRATEGY", "last")      
+TOP_RATIO = float(os.getenv("HAMI_TOP_RATIO", "0.1"))
+LAYER = int(os.getenv("HAMI_LAYER", "0"))          
 
 
 class HaMI(nn.Module):
