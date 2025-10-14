@@ -80,7 +80,8 @@ pip install -r requirements.txt
 ```
 
 Running the piplines in following order
-```{python}
+```{bash}
+export MULTI_MODEL_DIR=/workspace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct
 MULTI_LIMIT=50 python main.py
 #You can set the number as you like, if you just run python main.py, it will takes longer time because the multi_sample.py process will generate 2000 pairs of data training 5 times. Reduce the number to reduce the running time, but would lead to uncertainty to the result.  
 ```
