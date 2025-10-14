@@ -9,12 +9,5 @@ def load_and_sample_squad(n_train=2000, n_test=800, seed=42):
     json.dump(train.to_list(), open("data/squad_train.json", "w"), indent=2)
     json.dump(test.to_list(), open("data/squad_test.json", "w"), indent=2)
 
-def main():
-    n_train = int(os.getenv("DATA_TRAIN_N", "2000"))
-    n_test  = int(os.getenv("DATA_TEST_N",  "800"))
-    seed    = int(os.getenv("DATA_SEED",   "42"))
-    load_and_sample_squad(n_train=n_train, n_test=n_test, seed=seed)
-
 if __name__ == "__main__":
-    main()
-
+    load_and_sample_squad()

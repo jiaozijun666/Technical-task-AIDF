@@ -47,13 +47,25 @@ source .venv/bin/activate
 ```
 Download the model Llama-3.1-8B to environment
 ```{bash}
+# Download model from official website
 pip install llama-stack
 llama model download --source meta --model-id  Llama3.1-8B
-# Download ModelScope
+
+# Check status
+python - <<'PY'
+import os, json
+from transformers import AutoTokenizer, AutoModelForCausalLM
+p = os.environ["MULTI_MODEL_DIR"]
+tok = AutoTokenizer.from_pretrained(p, local_files_only=True)
+mdl = AutoModelForCausalLM.from_pretrained(p, local_files_only=True)
+print("ok:", type(tok).__name__, type(mdl).__name__)
+PY
+
+# (Optional, if fail to download the model, then) Download ModelScope
 source /workspace/Technical-tesk-AIDF/.venv/bin/active 2>/dev/null || true
 pip install modelscope transoformers accelerate bitsandbytes sentencepiece
 
-# Transformer mode
+# (Optional) Transformer mode
 python - <<'PY'
 from modelscope import snapshot_download
 d = snapshot_download(
@@ -68,7 +80,7 @@ PY
 ls -lh /workspace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct | head
 du -sh /worksoace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct
 ```
-输入openai api key
+Introducing openai api key
 ```{bash}
 pip install --upgrade openai
 export OPENAI_API_KEY="sk-xxxxxxxx"
@@ -81,10 +93,19 @@ pip install -r requirements.txt
 
 Running the piplines in following order
 ```{bash}
+# Ensure runs on the instruced model
 ln -sfn /workspace/models/LLM-Research/Meta-Llama-3___1-8B-Instruct \
         /workspace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct #When instruct into local evironment, name of the model file may vary
 export MULTI_MODEL_DIR=/workspace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct
 export MULTI_MODEL_DIR=/workspace/models/LLM-Research/Meta-Llama-3.1-8B-Instruct
+
+# Setseed 
+export SEED=42
+
+# (Optional due to the limited hashrate) Running on a small number of data to test
 MULTI_LIMIT=50 python main.py
-#You can set the number as you like, if you just run python main.py, it will takes longer time because the multi_sample.py process will generate 2000 pairs of data training 5 times. Reduce the number to reduce the running time, but would lead to uncertainty to the result.  
+#You can set the number as you like, if you just run python main.py, it will takes longer time because the multi_sample.py process will generate 2000 pairs of data training 5 times. Reduce the number to reduce the running time, but would lead to uncertainty to the result.
+
+# (If you have enough hardware and hashrate) Running the whole dataset 
+python main.py
 ```

@@ -1,4 +1,3 @@
-# HaMI/hami.py
 import os
 from typing import List, Dict, Any
 from collections import defaultdict
@@ -30,8 +29,6 @@ class HaMI(nn.Module):
         x = token_feats[:, layer_idx, :].float()
         return self.net(x).flatten()  # [T]
 
-
-# ----------------------------- utilities -----------------------------
 def _norm_text(s: str) -> str:
     import re, string
     s = (s or "").lower().strip()
@@ -116,8 +113,6 @@ def _group_by_q(flat_rows: List[Dict[str, Any]]):
         by_q[int(r["qid"])].append((idx, r.get("answer") or "", r.get("gold") or ""))
     return by_q
 
-
-# ----------------------------- public API -----------------------------
 @torch.inference_mode()
 def run_hami(
     flat_rows: List[Dict[str, Any]],

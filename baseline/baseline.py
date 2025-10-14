@@ -76,7 +76,6 @@ def _squad_tokens(s: str):
     return _squad_norm(s).split()
 
 
-# --------- gold auto-fill cache (helps p(true) when flat_rows lack gold) ---------
 def _load_gold_cache():
     by_id, by_q = {}, {}
     sources = [
@@ -158,7 +157,6 @@ def _conf_from_nll(mean_nll: float) -> float:
     return float(1.0 / (1.0 + math.exp(mean_nll - 3.0)))
 
 
-# ------------------------- baselines (all ↑ better) -------------------------
 def run_se(flat_rows: List[Dict[str, Any]], tok=None, model=None, args=None) -> List[float]:
     """String-Equivalence agreement within question: majority-normalized share."""
     by_q = _group_by_q(flat_rows)

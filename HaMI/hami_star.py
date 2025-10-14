@@ -1,12 +1,8 @@
-# HaMI/hami_star.py
 import os
 from typing import List, Dict, Any
 from collections import defaultdict
-
 import torch
 import torch.nn as nn
-
-
 class HaMI(nn.Module):
     """
     HaMI* detector head (paper baseline):
@@ -27,10 +23,8 @@ class HaMI(nn.Module):
     def forward(self, token_feats: torch.Tensor, layer_idx: int) -> torch.Tensor:
         # token_feats: [T, n_layers, d]
         x = token_feats[:, layer_idx, :].float()
-        return self.net(x).flatten()  # [T]
+        return self.net(x).flatten()  
 
-
-# ----------------------------- utilities -----------------------------
 def _norm_text(s: str) -> str:
     import re, string
     s = (s or "").lower().strip()
@@ -89,7 +83,6 @@ def _group_by_q(flat_rows: List[Dict[str, Any]]):
     return by_q
 
 
-# ----------------------------- public API -----------------------------
 @torch.inference_mode()
 def run_hami_star(
     flat_rows: List[Dict[str, Any]],
