@@ -1,8 +1,8 @@
 from __future__ import annotations
 import os, json, time
 from typing import List, Dict, Any, Optional
-from prompt import build_generation_prompt
-from api import chat_complete
+from src.prompt import build_generation_prompt
+from src.api import chat_complete
 
 CONFIG = {
     "INPUT_PATH": None,
